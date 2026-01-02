@@ -1,0 +1,11 @@
+# Project planning and automation files
+COMMIT_PLAN.md
+execute-commits.ps1
+
+# IDE and Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
