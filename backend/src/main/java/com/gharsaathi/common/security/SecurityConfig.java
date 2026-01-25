@@ -43,10 +43,18 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // Public authentication endpoints
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/health").permitAll()
+                        
+                        // Public property endpoints (browse and search) - MUST be before role-based rules
+                        .requestMatchers("/api/properties/**").permitAll()
+                        
+                        // Role-based endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/landlord/**").hasRole("LANDLORD")
                         .requestMatchers("/api/tenant/**").hasRole("TENANT")
+                        
+                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
