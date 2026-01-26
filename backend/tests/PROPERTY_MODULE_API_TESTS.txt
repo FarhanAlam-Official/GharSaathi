@@ -1,0 +1,745 @@
+================================================================================
+GHARSAATHI - PROPERTY MANAGEMENT MODULE API TESTS
+================================================================================
+Module: Property Management
+Version: 1.0.0
+Base URL: http://localhost:8080
+Last Updated: January 27, 2026
+================================================================================
+
+PREREQUISITES:
+1. Backend server must be running on http://localhost:8080
+2. MySQL database must be running on port 3307
+3. Use Postman or any REST client for testing
+
+================================================================================
+TEST SEQUENCE:
+================================================================================
+
+--------------------------------------------------------------------------------
+TEST 1: REGISTER A LANDLORD USER
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "fullName": "John Landlord",
+    "email": "landlord@test.com",
+    "password": "Test@123",
+    "phoneNumber": "9841234567",
+    "role": "LANDLORD"
+}
+
+Expected Response (201 Created):
+{
+    "accessToken": "eyJhbGci...",
+    "refreshToken": "eyJhbGci...",
+    "tokenType": "Bearer",
+    "expiresIn": 1706345678,
+    "userId": 1,
+    "email": "landlord@test.com",
+    "fullName": "John Landlord",
+    "role": "LANDLORD",
+    "message": "User registered successfully"
+}
+
+Action: SAVE THE accessToken - You will need it for subsequent requests!
+
+--------------------------------------------------------------------------------
+TEST 2: LOGIN AS LANDLORD
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/login
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "email": "landlord@test.com",
+    "password": "Test@123"
+}
+
+Expected Response (200 OK):
+{
+    "accessToken": "eyJhbGci...",
+    "refreshToken": "eyJhbGci...",
+    "tokenType": "Bearer",
+    "expiresIn": 1706345678,
+    "userId": 1,
+    "email": "landlord@test.com",
+    "fullName": "John Landlord",
+    "role": "LANDLORD",
+    "message": "Login successful"
+}
+
+Action: SAVE THE accessToken for the following tests
+
+--------------------------------------------------------------------------------
+TEST 3: CREATE PROPERTY #1 (2BHK APARTMENT IN KATHMANDU)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "title": "Beautiful 2BHK Apartment in Kathmandu",
+    "description": "Spacious 2 bedroom apartment with modern amenities located in the heart of Kathmandu. Perfect for families or working professionals. Close to schools, hospitals, and shopping centers.",
+    "propertyType": "APARTMENT",
+    "address": "Putalisadak, Kathmandu Metropolitan City",
+    "city": "Kathmandu",
+    "area": "Putalisadak",
+    "latitude": 27.7172,
+    "longitude": 85.3240,
+    "price": 25000,
+    "securityDeposit": 50000,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "propertyArea": 1200,
+    "furnished": true,
+    "parkingAvailable": true,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "AIR_CONDITIONING", "ELEVATOR", "SECURITY_GUARD", "PARKING", "WATER_SUPPLY"]
+}
+
+Expected Response (201 Created):
+{
+    "id": 1,
+    "title": "Beautiful 2BHK Apartment in Kathmandu",
+    "description": "Spacious 2 bedroom apartment...",
+    "propertyType": "APARTMENT",
+    "status": "AVAILABLE",
+    "address": "Putalisadak, Kathmandu Metropolitan City",
+    "city": "Kathmandu",
+    "area": "Putalisadak",
+    "price": 25000,
+    ...
+    "landlord": {
+        "id": 1,
+        "fullName": "John Landlord",
+        "email": "landlord@test.com",
+        "phoneNumber": "9841234567"
+    },
+    "createdAt": "2026-01-27T10:30:00",
+    "updatedAt": "2026-01-27T10:30:00"
+}
+
+Action: SAVE THE property id for subsequent tests
+
+--------------------------------------------------------------------------------
+TEST 4: CREATE PROPERTY #2 (3BHK HOUSE IN LALITPUR)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "title": "Spacious 3BHK House in Patan",
+    "description": "Independent house with garden and parking space. Located in peaceful residential area of Patan, Lalitpur. Great for families.",
+    "propertyType": "HOUSE",
+    "address": "Jawalakhel, Lalitpur",
+    "city": "Lalitpur",
+    "area": "Jawalakhel",
+    "latitude": 27.6710,
+    "longitude": 85.3160,
+    "price": 35000,
+    "securityDeposit": 70000,
+    "bedrooms": 3,
+    "bathrooms": 3,
+    "propertyArea": 2000,
+    "furnished": false,
+    "parkingAvailable": true,
+    "petsAllowed": true,
+    "amenities": ["GARDEN", "PARKING", "WATER_SUPPLY", "BALCONY", "TERRACE"]
+}
+
+Expected Response (201 Created):
+Property details with id: 2
+
+--------------------------------------------------------------------------------
+TEST 5: CREATE PROPERTY #3 (STUDIO APARTMENT IN BHAKTAPUR)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "title": "Cozy Studio Apartment for Students",
+    "description": "Perfect for students or single professionals. Fully furnished studio apartment near Bhaktapur Durbar Square.",
+    "propertyType": "STUDIO",
+    "address": "Durbar Square, Bhaktapur",
+    "city": "Bhaktapur",
+    "area": "Durbar Square",
+    "price": 12000,
+    "securityDeposit": 24000,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "propertyArea": 400,
+    "furnished": true,
+    "parkingAvailable": false,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "FURNISHED", "CEILING_FAN"]
+}
+
+Expected Response (201 Created):
+Property details with id: 3
+
+--------------------------------------------------------------------------------
+TEST 6: GET ALL AVAILABLE PROPERTIES (PUBLIC - NO AUTH REQUIRED)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties?page=0&size=10&sortBy=createdAt&sortDirection=DESC
+Headers:
+    (No headers required - Public endpoint)
+
+Expected Response (200 OK):
+{
+    "properties": [
+        {
+            "id": 3,
+            "title": "Cozy Studio Apartment for Students",
+            "propertyType": "STUDIO",
+            "status": "AVAILABLE",
+            "city": "Bhaktapur",
+            "area": "Durbar Square",
+            "price": 12000,
+            "bedrooms": 1,
+            "bathrooms": 1,
+            "propertyArea": 400,
+            "furnished": true,
+            "primaryImageUrl": null,
+            "landlordId": 1,
+            "landlordName": "John Landlord",
+            "landlordEmail": "landlord@test.com"
+        },
+        {
+            "id": 2,
+            "title": "Spacious 3BHK House in Patan",
+            ...
+        },
+        {
+            "id": 1,
+            "title": "Beautiful 2BHK Apartment in Kathmandu",
+            ...
+        }
+    ],
+    "totalElements": 3,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10,
+    "hasNext": false,
+    "hasPrevious": false
+}
+
+--------------------------------------------------------------------------------
+TEST 7: GET PROPERTY DETAILS BY ID (PUBLIC - NO AUTH REQUIRED)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties/1
+Headers:
+    (No headers required - Public endpoint)
+
+Expected Response (200 OK):
+{
+    "id": 1,
+    "title": "Beautiful 2BHK Apartment in Kathmandu",
+    "description": "Spacious 2 bedroom apartment with modern amenities...",
+    "propertyType": "APARTMENT",
+    "status": "AVAILABLE",
+    "address": "Putalisadak, Kathmandu Metropolitan City",
+    "city": "Kathmandu",
+    "area": "Putalisadak",
+    "latitude": 27.7172,
+    "longitude": 85.3240,
+    "price": 25000,
+    "securityDeposit": 50000,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "propertyArea": 1200,
+    "furnished": true,
+    "parkingAvailable": true,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "AIR_CONDITIONING", "ELEVATOR", "SECURITY_GUARD", "PARKING", "WATER_SUPPLY"],
+    "images": [],
+    "landlord": {
+        "id": 1,
+        "fullName": "John Landlord",
+        "email": "landlord@test.com",
+        "phoneNumber": "9841234567"
+    },
+    "availableFrom": null,
+    "createdAt": "2026-01-27T10:30:00",
+    "updatedAt": "2026-01-27T10:30:00"
+}
+
+--------------------------------------------------------------------------------
+TEST 8: SEARCH PROPERTIES WITH FILTERS (PUBLIC - NO AUTH REQUIRED)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/properties/search
+Headers:
+    Content-Type: application/json
+
+Request Body (Filter by city and price range):
+{
+    "city": "Kathmandu",
+    "minPrice": 20000,
+    "maxPrice": 30000,
+    "page": 0,
+    "size": 10,
+    "sortBy": "price",
+    "sortDirection": "ASC"
+}
+
+Expected Response (200 OK):
+{
+    "properties": [
+        {
+            "id": 1,
+            "title": "Beautiful 2BHK Apartment in Kathmandu",
+            "price": 25000,
+            ...
+        }
+    ],
+    "totalElements": 1,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10,
+    "hasNext": false,
+    "hasPrevious": false
+}
+
+--------------------------------------------------------------------------------
+TEST 9: SEARCH PROPERTIES - FILTER BY BEDROOMS AND FURNISHED
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/properties/search
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "minBedrooms": 2,
+    "furnished": true,
+    "page": 0,
+    "size": 10
+}
+
+Expected Response (200 OK):
+Properties with 2+ bedrooms that are furnished
+
+--------------------------------------------------------------------------------
+TEST 10: SEARCH PROPERTIES - FILTER BY PROPERTY TYPE
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/properties/search
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "propertyType": "HOUSE",
+    "city": "Lalitpur",
+    "page": 0,
+    "size": 10
+}
+
+Expected Response (200 OK):
+Houses in Lalitpur
+
+--------------------------------------------------------------------------------
+TEST 11: SEARCH PROPERTIES - KEYWORD SEARCH
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/properties/search
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "keyword": "student",
+    "page": 0,
+    "size": 10
+}
+
+Expected Response (200 OK):
+Properties with "student" in title or description
+
+--------------------------------------------------------------------------------
+TEST 12: GET MY PROPERTIES (LANDLORD ONLY - AUTH REQUIRED)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/properties?page=0&size=10
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+{
+    "properties": [
+        {
+            "id": 3,
+            "title": "Cozy Studio Apartment for Students",
+            ...
+        },
+        {
+            "id": 2,
+            "title": "Spacious 3BHK House in Patan",
+            ...
+        },
+        {
+            "id": 1,
+            "title": "Beautiful 2BHK Apartment in Kathmandu",
+            ...
+        }
+    ],
+    "totalElements": 3,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10,
+    "hasNext": false,
+    "hasPrevious": false
+}
+
+--------------------------------------------------------------------------------
+TEST 13: GET MY PROPERTY DETAILS (LANDLORD ONLY - AUTH REQUIRED)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/properties/1
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+Full property details (same as Test 7)
+
+--------------------------------------------------------------------------------
+TEST 14: UPDATE PROPERTY - CHANGE PRICE AND DESCRIPTION
+--------------------------------------------------------------------------------
+Method: PUT
+URL: http://localhost:8080/api/landlord/properties/1
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "price": 27000,
+    "description": "UPDATED: Spacious 2 bedroom apartment with modern amenities. Price reduced for quick rental! Located in prime location of Kathmandu."
+}
+
+Expected Response (200 OK):
+{
+    "id": 1,
+    "title": "Beautiful 2BHK Apartment in Kathmandu",
+    "description": "UPDATED: Spacious 2 bedroom apartment...",
+    "price": 27000,
+    ...
+    "updatedAt": "2026-01-27T11:00:00"
+}
+
+--------------------------------------------------------------------------------
+TEST 15: UPDATE PROPERTY - CHANGE MULTIPLE FIELDS
+--------------------------------------------------------------------------------
+Method: PUT
+URL: http://localhost:8080/api/landlord/properties/2
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "price": 32000,
+    "furnished": true,
+    "amenities": ["GARDEN", "PARKING", "WATER_SUPPLY", "BALCONY", "TERRACE", "WIFI", "SECURITY_GUARD"]
+}
+
+Expected Response (200 OK):
+Updated property with new values
+
+--------------------------------------------------------------------------------
+TEST 16: UPDATE PROPERTY STATUS - MARK AS RENTED
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/properties/3/status?status=RENTED
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+{
+    "id": 3,
+    "title": "Cozy Studio Apartment for Students",
+    "status": "RENTED",
+    ...
+}
+
+Note: Once status is RENTED, it won't appear in public listings
+
+--------------------------------------------------------------------------------
+TEST 17: UPDATE PROPERTY STATUS - MARK AS MAINTENANCE
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/properties/2/status?status=MAINTENANCE
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+Property status updated to MAINTENANCE
+
+--------------------------------------------------------------------------------
+TEST 18: UPDATE PROPERTY STATUS - MARK AS AVAILABLE AGAIN
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/properties/2/status?status=AVAILABLE
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+Property status updated to AVAILABLE
+
+--------------------------------------------------------------------------------
+TEST 19: DELETE PROPERTY (SOFT DELETE)
+--------------------------------------------------------------------------------
+Method: DELETE
+URL: http://localhost:8080/api/landlord/properties/3
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (200 OK):
+{
+    "message": "Property deleted successfully"
+}
+
+Note: This is a soft delete - status is set to UNAVAILABLE
+
+--------------------------------------------------------------------------------
+TEST 20: VERIFY PUBLIC LISTING AFTER DELETE
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties?page=0&size=10
+Headers:
+    (No headers required)
+
+Expected Response (200 OK):
+Should show only 2 properties (id: 1 and 2)
+Property with id: 3 should NOT appear (status: UNAVAILABLE or RENTED)
+
+================================================================================
+NEGATIVE TEST CASES
+================================================================================
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 1: CREATE PROPERTY WITHOUT AUTHENTICATION
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    (No Authorization header)
+
+Request Body:
+{
+    "title": "Test Property",
+    "description": "This should fail",
+    "propertyType": "APARTMENT",
+    "address": "Test Address",
+    "city": "Kathmandu",
+    "price": 10000
+}
+
+Expected Response (401 Unauthorized):
+{
+    "error": "Unauthorized"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 2: CREATE PROPERTY WITH INVALID DATA (MISSING REQUIRED FIELDS)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Request Body:
+{
+    "title": "Test",
+    "description": "Too short description"
+}
+
+Expected Response (400 Bad Request):
+{
+    "propertyType": "Property type is required",
+    "address": "Address is required",
+    "city": "City is required",
+    "price": "Price is required",
+    "title": "Title must be between 10 and 255 characters",
+    "description": "Description must be between 50 and 5000 characters"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 3: UPDATE PROPERTY THAT DOESN'T BELONG TO YOU
+--------------------------------------------------------------------------------
+Prerequisites: Register another landlord with different email
+
+Method: PUT
+URL: http://localhost:8080/api/landlord/properties/1
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer OTHER_LANDLORD_TOKEN
+
+Request Body:
+{
+    "price": 50000
+}
+
+Expected Response (403 Forbidden):
+{
+    "error": "User with id 2 does not have access to property with id 1"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 4: GET NON-EXISTENT PROPERTY
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties/999
+Headers:
+    (No headers required)
+
+Expected Response (404 Not Found):
+{
+    "error": "Property not found with id: 999"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 5: DELETE RENTED PROPERTY
+--------------------------------------------------------------------------------
+Prerequisites: Mark a property as RENTED first
+
+Method: DELETE
+URL: http://localhost:8080/api/landlord/properties/{RENTED_PROPERTY_ID}
+Headers:
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Expected Response (409 Conflict):
+{
+    "error": "Property with id X is already rented and cannot be modified"
+}
+
+================================================================================
+ADMIN TEST CASES (OPTIONAL - IF ADMIN USER EXISTS)
+================================================================================
+
+--------------------------------------------------------------------------------
+ADMIN TEST 1: REGISTER ADMIN USER
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "fullName": "Admin User",
+    "email": "admin@gharsaathi.com",
+    "password": "Admin@123",
+    "phoneNumber": "9841111111",
+    "role": "ADMIN"
+}
+
+--------------------------------------------------------------------------------
+ADMIN TEST 2: GET ALL PROPERTIES (INCLUDING UNAVAILABLE)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/admin/properties?page=0&size=20
+Headers:
+    Authorization: Bearer ADMIN_ACCESS_TOKEN
+
+Expected Response (200 OK):
+All properties including UNAVAILABLE, RENTED, MAINTENANCE status
+
+================================================================================
+VALIDATION TEST CASES
+================================================================================
+
+Valid Property Types:
+- APARTMENT
+- HOUSE
+- ROOM
+- STUDIO
+- VILLA
+- COMMERCIAL
+- LAND
+- OTHER
+
+Valid Property Status:
+- AVAILABLE
+- RENTED
+- PENDING
+- MAINTENANCE
+- UNAVAILABLE
+
+Valid Amenities (examples):
+- WIFI
+- AIR_CONDITIONING
+- HEATING
+- WASHING_MACHINE
+- DRYER
+- GYM
+- SWIMMING_POOL
+- GARDEN
+- BALCONY
+- ELEVATOR
+- SECURITY_GUARD
+- PARKING
+- WATER_SUPPLY
+
+================================================================================
+PAGINATION & SORTING EXAMPLES
+================================================================================
+
+Get properties sorted by price (ascending):
+GET http://localhost:8080/api/properties?page=0&size=10&sortBy=price&sortDirection=ASC
+
+Get properties sorted by bedrooms (descending):
+GET http://localhost:8080/api/properties?page=0&size=10&sortBy=bedrooms&sortDirection=DESC
+
+Get second page of results:
+GET http://localhost:8080/api/properties?page=1&size=5
+
+================================================================================
+NOTES
+================================================================================
+
+1. Token Expiry: Access tokens expire after 1 hour. Use refresh token endpoint if needed.
+2. Role-Based Access: Only LANDLORD can create/update/delete properties.
+3. Public Access: Anyone can view available properties without authentication.
+4. Property Status: Only AVAILABLE properties appear in public listings.
+5. Soft Delete: Deleted properties are marked as UNAVAILABLE, not removed from database.
+6. Validation: All required fields must be provided when creating properties.
+7. Ownership: Landlords can only modify their own properties.
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+✅ All 20 main tests should pass
+✅ All 5 negative tests should return proper error responses
+✅ Properties should be visible in public listings when AVAILABLE
+✅ Properties should NOT be visible when RENTED, MAINTENANCE, or UNAVAILABLE
+✅ Only property owners can modify their properties
+✅ Pagination and sorting should work correctly
+✅ Search filters should return accurate results
+
+================================================================================
+END OF TEST DOCUMENT
+================================================================================
