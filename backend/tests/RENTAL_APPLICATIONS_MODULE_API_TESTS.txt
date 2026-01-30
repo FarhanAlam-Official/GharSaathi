@@ -1,0 +1,898 @@
+================================================================================
+GHARSAATHI - RENTAL APPLICATIONS MODULE API TESTS
+================================================================================
+Module: Rental Applications
+Version: 1.0.0
+Base URL: http://localhost:8080
+Last Updated: January 27, 2026
+================================================================================
+
+PREREQUISITES:
+1. Backend server must be running on http://localhost:8080
+2. MySQL database must be running on port 3307
+3. Use Postman or any REST client for testing
+4. At least one property must exist with status AVAILABLE
+5. You need both TENANT and LANDLORD accounts
+
+================================================================================
+TEST SEQUENCE:
+================================================================================
+
+--------------------------------------------------------------------------------
+SETUP: REGISTER AND LOGIN USERS
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+TEST 1: REGISTER A TENANT USER
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "fullName": "Jane Tenant",
+    "email": "tenant@test.com",
+    "password": "Test@123",
+    "phoneNumber": "9841111111",
+    "role": "TENANT"
+}
+
+Expected Response (201 Created):
+{
+    "accessToken": "eyJhbGci...",
+    "refreshToken": "eyJhbGci...",
+    "tokenType": "Bearer",
+    "expiresIn": 1706345678,
+    "userId": 2,
+    "email": "tenant@test.com",
+    "fullName": "Jane Tenant",
+    "role": "TENANT",
+    "message": "User registered successfully"
+}
+
+Action: SAVE THE accessToken as TENANT_TOKEN
+
+--------------------------------------------------------------------------------
+TEST 2: REGISTER A LANDLORD USER (IF NOT EXISTS)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Headers:
+    Content-Type: application/json
+
+Request Body:
+{
+    "fullName": "John Landlord",
+    "email": "landlord@test.com",
+    "password": "Test@123",
+    "phoneNumber": "9841234567",
+    "role": "LANDLORD"
+}
+
+Expected Response (201 Created):
+{
+    "accessToken": "eyJhbGci...",
+    "refreshToken": "eyJhbGci...",
+    "tokenType": "Bearer",
+    "expiresIn": 1706345678,
+    "userId": 1,
+    "email": "landlord@test.com",
+    "fullName": "John Landlord",
+    "role": "LANDLORD",
+    "message": "User registered successfully"
+}
+
+Action: SAVE THE accessToken as LANDLORD_TOKEN
+
+--------------------------------------------------------------------------------
+TEST 3: CREATE A PROPERTY (LANDLORD - IF NOT EXISTS)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN
+
+Request Body:
+{
+    "title": "Beautiful 2BHK Apartment in Kathmandu",
+    "description": "Spacious 2 bedroom apartment with modern amenities located in the heart of Kathmandu. Perfect for families or working professionals. Close to schools, hospitals, and shopping centers.",
+    "propertyType": "APARTMENT",
+    "address": "Putalisadak, Kathmandu Metropolitan City",
+    "city": "Kathmandu",
+    "area": "Putalisadak",
+    "latitude": 27.7172,
+    "longitude": 85.3240,
+    "price": 25000,
+    "securityDeposit": 50000,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "propertyArea": 1200,
+    "furnished": true,
+    "parkingAvailable": true,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "AIR_CONDITIONING", "ELEVATOR", "SECURITY_GUARD", "PARKING", "WATER_SUPPLY"]
+}
+
+Expected Response (201 Created):
+Property created with status AVAILABLE
+
+Action: SAVE THE property id (e.g., 1) as PROPERTY_ID
+
+================================================================================
+TENANT ENDPOINTS TESTS
+================================================================================
+
+--------------------------------------------------------------------------------
+TEST 4: SUBMIT RENTAL APPLICATION (TENANT)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "Hello, I am interested in renting this beautiful apartment. I am a working professional with a stable job and excellent references. I would love to schedule a viewing at your earliest convenience.",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Full-time Software Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "John Doe",
+    "emergencyContactPhone": "9841222222"
+}
+
+Expected Response (201 Created):
+{
+    "id": 1,
+    "status": "PENDING",
+    "message": "Hello, I am interested in renting this beautiful apartment...",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Full-time Software Engineer",
+    "monthlyIncome": 80000.00,
+    "hasPets": false,
+    "emergencyContactName": "John Doe",
+    "emergencyContactPhone": "9841222222",
+    "landlordResponse": null,
+    "reviewedAt": null,
+    "createdAt": "2026-01-27T16:30:00",
+    "updatedAt": "2026-01-27T16:30:00",
+    "property": {
+        "id": 1,
+        "title": "Beautiful 2BHK Apartment in Kathmandu",
+        "address": "Putalisadak, Kathmandu Metropolitan City",
+        "city": "Kathmandu",
+        "price": 25000,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "propertyType": "APARTMENT",
+        "primaryImageUrl": null
+    },
+    "tenant": {
+        "id": 2,
+        "fullName": "Jane Tenant",
+        "email": "tenant@test.com",
+        "phoneNumber": "9841111111"
+    }
+}
+
+Action: SAVE THE application id as APPLICATION_ID
+
+--------------------------------------------------------------------------------
+TEST 5: GET ALL MY APPLICATIONS (TENANT)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/tenant/applications?page=0&size=10&sortBy=createdAt&sortDirection=DESC
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+
+Expected Response (200 OK):
+{
+    "applications": [
+        {
+            "id": 1,
+            "status": "PENDING",
+            "message": "Hello, I am interested...",
+            "moveInDate": "2026-02-15",
+            "leaseDurationMonths": 12,
+            "numberOfOccupants": 2,
+            "employmentStatus": "Full-time Software Engineer",
+            "monthlyIncome": 80000.00,
+            "hasPets": false,
+            "emergencyContactName": "John Doe",
+            "emergencyContactPhone": "9841222222",
+            "landlordResponse": null,
+            "reviewedAt": null,
+            "property": {
+                "id": 1,
+                "title": "Beautiful 2BHK Apartment in Kathmandu",
+                ...
+            },
+            "tenant": {
+                "id": 2,
+                "fullName": "Jane Tenant",
+                ...
+            },
+            "createdAt": "2026-01-27T16:30:00",
+            "updatedAt": "2026-01-27T16:30:00"
+        }
+    ],
+    "totalElements": 1,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10,
+    "hasNext": false,
+    "hasPrevious": false
+}
+
+--------------------------------------------------------------------------------
+TEST 6: GET SPECIFIC APPLICATION BY ID (TENANT)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/tenant/applications/1
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+
+Expected Response (200 OK):
+Full application details (same as TEST 4 response)
+
+--------------------------------------------------------------------------------
+TEST 7: GET TENANT STATISTICS
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/tenant/applications/statistics
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+
+Expected Response (200 OK):
+{
+    "pending": 1,
+    "approved": 0,
+    "rejected": 0,
+    "withdrawn": 0
+}
+
+================================================================================
+LANDLORD ENDPOINTS TESTS
+================================================================================
+
+--------------------------------------------------------------------------------
+TEST 8: GET ALL APPLICATIONS FOR MY PROPERTIES (LANDLORD)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/applications?page=0&size=10&sortBy=createdAt&sortDirection=DESC
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+
+Expected Response (200 OK):
+{
+    "applications": [
+        {
+            "id": 1,
+            "status": "PENDING",
+            "message": "Hello, I am interested...",
+            "moveInDate": "2026-02-15",
+            "leaseDurationMonths": 12,
+            "numberOfOccupants": 2,
+            "employmentStatus": "Full-time Software Engineer",
+            "monthlyIncome": 80000.00,
+            "hasPets": false,
+            "emergencyContactName": "John Doe",
+            "emergencyContactPhone": "9841222222",
+            "landlordResponse": null,
+            "reviewedAt": null,
+            "property": {
+                "id": 1,
+                "title": "Beautiful 2BHK Apartment in Kathmandu",
+                ...
+            },
+            "tenant": {
+                "id": 2,
+                "fullName": "Jane Tenant",
+                "email": "tenant@test.com",
+                "phoneNumber": "9841111111"
+            },
+            "createdAt": "2026-01-27T16:30:00",
+            "updatedAt": "2026-01-27T16:30:00"
+        }
+    ],
+    "totalElements": 1,
+    "totalPages": 1,
+    "currentPage": 0,
+    "pageSize": 10,
+    "hasNext": false,
+    "hasPrevious": false
+}
+
+--------------------------------------------------------------------------------
+TEST 9: GET APPLICATIONS FOR SPECIFIC PROPERTY (LANDLORD)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/properties/1/applications?page=0&size=10
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+
+Expected Response (200 OK):
+List of applications for property with id 1
+
+--------------------------------------------------------------------------------
+TEST 10: GET LANDLORD STATISTICS
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/applications/statistics
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+
+Expected Response (200 OK):
+{
+    "pending": 1,
+    "approved": 0,
+    "rejected": 0
+}
+
+--------------------------------------------------------------------------------
+TEST 11: APPROVE APPLICATION (LANDLORD)
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/1/approve
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN
+
+Request Body (Optional):
+{
+    "landlordResponse": "Your application has been approved! Welcome to the apartment. Please contact me to complete the paperwork and arrange key handover."
+}
+
+Expected Response (200 OK):
+{
+    "id": 1,
+    "status": "APPROVED",
+    "message": "Hello, I am interested...",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Full-time Software Engineer",
+    "monthlyIncome": 80000.00,
+    "hasPets": false,
+    "emergencyContactName": "John Doe",
+    "emergencyContactPhone": "9841222222",
+    "landlordResponse": "Your application has been approved! Welcome to the apartment...",
+    "reviewedAt": "2026-01-27T16:35:00",
+    "property": {
+        "id": 1,
+        "title": "Beautiful 2BHK Apartment in Kathmandu",
+        ...
+    },
+    "tenant": {
+        "id": 2,
+        "fullName": "Jane Tenant",
+        ...
+    },
+    "createdAt": "2026-01-27T16:30:00",
+    "updatedAt": "2026-01-27T16:35:00"
+}
+
+Note: 
+- Property status will automatically change to RENTED
+- All other pending applications for this property will be auto-rejected
+
+--------------------------------------------------------------------------------
+TEST 12: VERIFY PROPERTY STATUS CHANGED TO RENTED
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties/1
+Headers:
+    (No headers required - Public endpoint)
+
+Expected Response (200 OK):
+Property with status: "RENTED"
+
+================================================================================
+ADDITIONAL SCENARIOS
+================================================================================
+
+--------------------------------------------------------------------------------
+TEST 13: CREATE ANOTHER PROPERTY FOR REJECTION TEST
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN
+
+Request Body:
+{
+    "title": "Cozy Studio Apartment for Students",
+    "description": "Perfect for students or single professionals. Fully furnished studio apartment near Bhaktapur Durbar Square.",
+    "propertyType": "STUDIO",
+    "address": "Durbar Square, Bhaktapur",
+    "city": "Bhaktapur",
+    "area": "Durbar Square",
+    "price": 12000,
+    "securityDeposit": 24000,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "propertyArea": 400,
+    "furnished": true,
+    "parkingAvailable": false,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "FURNISHED", "CEILING_FAN"]
+}
+
+Action: SAVE property id as PROPERTY_ID_2 (e.g., 2)
+
+--------------------------------------------------------------------------------
+TEST 14: SUBMIT APPLICATION FOR SECOND PROPERTY (TENANT)
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 2,
+    "message": "I am a student looking for affordable accommodation near my college.",
+    "moveInDate": "2026-03-01",
+    "leaseDurationMonths": 6,
+    "numberOfOccupants": 1,
+    "employmentStatus": "Student - Part-time job",
+    "monthlyIncome": 30000,
+    "hasPets": false,
+    "emergencyContactName": "Parent Name",
+    "emergencyContactPhone": "9841333333"
+}
+
+Action: SAVE application id as APPLICATION_ID_2
+
+--------------------------------------------------------------------------------
+TEST 15: REJECT APPLICATION (LANDLORD)
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/APPLICATION_ID_2/reject
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN
+
+Request Body (Optional):
+{
+    "landlordResponse": "Thank you for your interest. Unfortunately, we have decided to move forward with another applicant who better matches our requirements."
+}
+
+Expected Response (200 OK):
+{
+    "id": 2,
+    "status": "REJECTED",
+    "message": "I am a student looking for affordable accommodation...",
+    "landlordResponse": "Thank you for your interest. Unfortunately...",
+    "reviewedAt": "2026-01-27T16:40:00",
+    ...
+}
+
+Note: Property status remains AVAILABLE after rejection
+
+--------------------------------------------------------------------------------
+TEST 16: SUBMIT NEW APPLICATION FOR THIRD PROPERTY
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 2,
+    "message": "I would like to reconsider my application with improved financial documents.",
+    "moveInDate": "2026-03-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 1,
+    "employmentStatus": "Full-time employee",
+    "monthlyIncome": 50000,
+    "hasPets": false,
+    "emergencyContactName": "Parent Name",
+    "emergencyContactPhone": "9841333333"
+}
+
+Action: SAVE application id as APPLICATION_ID_3
+
+--------------------------------------------------------------------------------
+TEST 17: WITHDRAW APPLICATION (TENANT)
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/tenant/applications/APPLICATION_ID_3/withdraw
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+
+Expected Response (200 OK):
+{
+    "id": 3,
+    "status": "WITHDRAWN",
+    "message": "I would like to reconsider...",
+    ...
+}
+
+Note: Only PENDING applications can be withdrawn
+
+================================================================================
+NEGATIVE TEST CASES
+================================================================================
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 1: SUBMIT APPLICATION WITHOUT AUTHENTICATION
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    (No Authorization header)
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "Test",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (401 Unauthorized):
+{
+    "error": "Unauthorized"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 2: LANDLORD TRYING TO USE TENANT ENDPOINT
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "Test",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (403 Forbidden):
+{
+    "error": "Access Denied"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 3: SUBMIT APPLICATION WITH INVALID DATA
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "Too short",
+    "moveInDate": "2020-01-01",
+    "leaseDurationMonths": 0,
+    "numberOfOccupants": 0
+}
+
+Expected Response (400 Bad Request):
+{
+    "moveInDate": "Move-in date must be today or in the future",
+    "leaseDurationMonths": "Lease duration must be at least 1 month",
+    "numberOfOccupants": "Number of occupants must be at least 1",
+    "employmentStatus": "Employment status is required",
+    "monthlyIncome": "Monthly income is required",
+    "hasPets": "Pet information is required",
+    "emergencyContactName": "Emergency contact name is required",
+    "emergencyContactPhone": "Emergency contact phone is required"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 4: DUPLICATE APPLICATION (SAME TENANT, SAME PROPERTY)
+--------------------------------------------------------------------------------
+Prerequisites: Already have a PENDING or APPROVED application for a property
+
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 2,
+    "message": "Another application for same property",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (409 Conflict):
+{
+    "error": "You already have an active application for this property"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 5: APPLY TO NON-EXISTENT PROPERTY
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 999,
+    "message": "I want to rent this property",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (404 Not Found):
+{
+    "error": "Property not found with id: 999"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 6: APPLY TO RENTED PROPERTY
+--------------------------------------------------------------------------------
+Prerequisites: Property with status RENTED (e.g., property id 1 from TEST 11)
+
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer TENANT_TOKEN
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "I want to rent this property",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (400 Bad Request):
+{
+    "error": "Cannot apply for property with status: RENTED"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 7: LANDLORD APPLYING TO OWN PROPERTY
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Content-Type: application/json
+    Authorization: Bearer LANDLORD_TOKEN (who is also registered as TENANT)
+
+Request Body:
+{
+    "propertyId": 1,
+    "message": "Applying to own property",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Engineer",
+    "monthlyIncome": 80000,
+    "hasPets": false,
+    "emergencyContactName": "Test",
+    "emergencyContactPhone": "9841111111"
+}
+
+Expected Response (400 Bad Request):
+{
+    "error": "Cannot apply to your own property"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 8: APPROVE NON-EXISTENT APPLICATION
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/999/approve
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+
+Expected Response (404 Not Found):
+{
+    "error": "Application not found with id: 999"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 9: APPROVE ALREADY APPROVED APPLICATION
+--------------------------------------------------------------------------------
+Prerequisites: Application with status APPROVED
+
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/1/approve
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+
+Expected Response (400 Bad Request):
+{
+    "error": "Can only approve applications in PENDING status. Current status: APPROVED"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 10: WITHDRAW NON-PENDING APPLICATION
+--------------------------------------------------------------------------------
+Prerequisites: Application with status APPROVED or REJECTED
+
+Method: PATCH
+URL: http://localhost:8080/api/tenant/applications/1/withdraw
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+
+Expected Response (400 Bad Request):
+{
+    "error": "Can only withdraw applications in PENDING status. Current status: APPROVED"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 11: TENANT ACCESSING ANOTHER TENANT'S APPLICATION
+--------------------------------------------------------------------------------
+Prerequisites: Two different tenant accounts with applications
+
+Method: GET
+URL: http://localhost:8080/api/tenant/applications/1
+Headers:
+    Authorization: Bearer OTHER_TENANT_TOKEN
+
+Expected Response (404 Not Found):
+{
+    "error": "Application not found with id: 1"
+}
+
+--------------------------------------------------------------------------------
+NEGATIVE TEST 12: LANDLORD APPROVING APPLICATION FOR OTHER'S PROPERTY
+--------------------------------------------------------------------------------
+Prerequisites: Two landlords, application for first landlord's property
+
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/1/approve
+Headers:
+    Authorization: Bearer OTHER_LANDLORD_TOKEN
+
+Expected Response (404 Not Found):
+{
+    "error": "Application not found with id: 1"
+}
+
+================================================================================
+BUSINESS RULES VERIFICATION
+================================================================================
+
+✅ One Active Application Rule:
+   - Tenant can only have ONE active (PENDING or APPROVED) application per property
+   - After withdrawal or rejection, tenant can submit new application
+
+✅ Auto-Rejection Rule:
+   - When landlord approves one application, all other PENDING applications for 
+     that property are automatically REJECTED
+
+✅ Property Status Synchronization:
+   - When application is APPROVED, property status changes to RENTED
+   - When application is REJECTED or WITHDRAWN, property status remains AVAILABLE
+
+✅ Access Control:
+   - Tenants can only view/withdraw their own applications
+   - Landlords can only view/approve/reject applications for their properties
+   - Role-based endpoints properly enforced
+
+✅ State Transitions:
+   - PENDING → APPROVED (by landlord)
+   - PENDING → REJECTED (by landlord)
+   - PENDING → WITHDRAWN (by tenant)
+   - Cannot modify APPROVED, REJECTED, WITHDRAWN, or CANCELLED applications
+
+✅ Validation Rules:
+   - All required fields validated
+   - Move-in date must be today or future
+   - Lease duration minimum 1 month
+   - Number of occupants minimum 1
+   - Monthly income must be positive
+
+================================================================================
+PAGINATION & SORTING EXAMPLES
+================================================================================
+
+Get applications sorted by status:
+GET http://localhost:8080/api/tenant/applications?page=0&size=10&sortBy=status&sortDirection=ASC
+
+Get applications sorted by move-in date:
+GET http://localhost:8080/api/tenant/applications?page=0&size=10&sortBy=moveInDate&sortDirection=ASC
+
+Get second page of landlord applications:
+GET http://localhost:8080/api/landlord/applications?page=1&size=5
+
+================================================================================
+NOTES
+================================================================================
+
+1. Application Status Flow:
+   PENDING → APPROVED (property becomes RENTED)
+   PENDING → REJECTED (property remains AVAILABLE)
+   PENDING → WITHDRAWN (property remains AVAILABLE)
+
+2. Auto-Rejection: When one application is approved, all other pending 
+   applications for the same property are automatically rejected with message:
+   "Property has been rented to another tenant"
+
+3. Duplicate Prevention: Tenants cannot submit multiple active applications 
+   for the same property
+
+4. Access Control: 
+   - Tenants can only manage their own applications
+   - Landlords can only manage applications for their properties
+
+5. Property Status: Only AVAILABLE properties accept new applications
+
+6. Landlord Response: Optional message when approving or rejecting applications
+
+7. Statistics Endpoints: Provide count of applications by status for dashboards
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+✅ Tenants can submit applications for available properties
+✅ Tenants can view all their applications with pagination
+✅ Tenants can withdraw pending applications
+✅ Landlords can view all applications for their properties
+✅ Landlords can approve applications (property becomes RENTED)
+✅ Landlords can reject applications (property stays AVAILABLE)
+✅ Auto-rejection of other pending applications when one is approved
+✅ Duplicate application prevention works correctly
+✅ Access control properly enforced (tenant/landlord separation)
+✅ All validation rules working correctly
+✅ Statistics endpoints return accurate counts
+✅ Proper error responses for all negative scenarios
+
+================================================================================
+END OF TEST DOCUMENT
+================================================================================
