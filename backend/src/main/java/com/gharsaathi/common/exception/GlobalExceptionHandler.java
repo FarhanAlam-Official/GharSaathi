@@ -12,6 +12,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.gharsaathi.rental.application.exception.ApplicationAccessDeniedException;
+import com.gharsaathi.rental.application.exception.ApplicationNotFoundException;
+import com.gharsaathi.rental.application.exception.DuplicateApplicationException;
+import com.gharsaathi.rental.application.exception.InvalidApplicationStateException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -103,6 +108,36 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    // Rental Application-specific exception handlers
+    
+    @ExceptionHandler(ApplicationNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleApplicationNotFound(ApplicationNotFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(DuplicateApplicationException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateApplication(DuplicateApplicationException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(ApplicationAccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleApplicationAccessDenied(ApplicationAccessDeniedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(InvalidApplicationStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidApplicationState(InvalidApplicationStateException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(Exception.class)
