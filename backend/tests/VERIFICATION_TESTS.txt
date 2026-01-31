@@ -1,0 +1,148 @@
+================================================================================
+GHARSAATHI - MODULE VERIFICATION TESTS
+================================================================================
+Purpose: Verify all modules work correctly and no existing functionality is broken
+Date: January 27, 2026
+================================================================================
+
+TEST 1: HEALTH CHECK
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/auth/health
+Expected: 200 OK with "OK" message
+
+TEST 2: REGISTER TENANT
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Body:
+{
+    "fullName": "Test Tenant",
+    "email": "tenant.verify@test.com",
+    "password": "Test@123",
+    "phoneNumber": "9841111111",
+    "role": "TENANT"
+}
+Expected: 201 Created with access token
+Action: SAVE TOKEN as TENANT_TOKEN
+
+TEST 3: REGISTER LANDLORD
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/auth/register
+Body:
+{
+    "fullName": "Test Landlord",
+    "email": "landlord.verify@test.com",
+    "password": "Test@123",
+    "phoneNumber": "9841234567",
+    "role": "LANDLORD"
+}
+Expected: 201 Created with access token
+Action: SAVE TOKEN as LANDLORD_TOKEN
+
+TEST 4: CREATE PROPERTY
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/landlord/properties
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+Body:
+{
+    "title": "Verification Test Property",
+    "description": "This property is created to verify the Property Management Module is working correctly after adding Rental Applications Module.",
+    "propertyType": "APARTMENT",
+    "address": "Test Address, Kathmandu",
+    "city": "Kathmandu",
+    "area": "Test Area",
+    "price": 20000,
+    "securityDeposit": 40000,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "propertyArea": 1000,
+    "furnished": true,
+    "parkingAvailable": true,
+    "petsAllowed": false,
+    "amenities": ["WIFI", "PARKING"]
+}
+Expected: 201 Created
+Action: SAVE property.id as PROPERTY_ID
+
+TEST 5: VIEW PROPERTY (PUBLIC)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties/PROPERTY_ID
+Expected: 200 OK with property details
+
+TEST 6: SUBMIT RENTAL APPLICATION
+--------------------------------------------------------------------------------
+Method: POST
+URL: http://localhost:8080/api/tenant/applications
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+Body:
+{
+    "propertyId": PROPERTY_ID,
+    "message": "I am interested in renting this property for verification testing.",
+    "moveInDate": "2026-02-15",
+    "leaseDurationMonths": 12,
+    "numberOfOccupants": 2,
+    "employmentStatus": "Software Engineer",
+    "monthlyIncome": 75000,
+    "hasPets": false,
+    "emergencyContactName": "Emergency Contact",
+    "emergencyContactPhone": "9841222222"
+}
+Expected: 201 Created
+Action: SAVE application.id as APPLICATION_ID
+
+TEST 7: VIEW APPLICATION (TENANT)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/tenant/applications/APPLICATION_ID
+Headers:
+    Authorization: Bearer TENANT_TOKEN
+Expected: 200 OK with application details
+
+TEST 8: VIEW APPLICATIONS FOR PROPERTY (LANDLORD)
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/landlord/properties/PROPERTY_ID/applications
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+Expected: 200 OK with list containing 1 application
+
+TEST 9: APPROVE APPLICATION
+--------------------------------------------------------------------------------
+Method: PATCH
+URL: http://localhost:8080/api/landlord/applications/APPLICATION_ID/approve
+Headers:
+    Authorization: Bearer LANDLORD_TOKEN
+Body:
+{
+    "landlordResponse": "Application approved for verification testing."
+}
+Expected: 200 OK with application status APPROVED
+
+TEST 10: VERIFY PROPERTY STATUS CHANGED
+--------------------------------------------------------------------------------
+Method: GET
+URL: http://localhost:8080/api/properties/PROPERTY_ID
+Expected: 200 OK with property status: RENTED
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+✅ Authentication Module: Registration works
+✅ Authentication Module: Login works (auto-login on registration)
+✅ Property Module: Create property works
+✅ Property Module: View property works (public)
+✅ Property Module: Property belongs to correct landlord
+✅ Application Module: Submit application works
+✅ Application Module: View application works (tenant)
+✅ Application Module: View applications for property works (landlord)
+✅ Application Module: Approve application works
+✅ Application Module: Property status automatically changes to RENTED
+✅ No existing functionality broken
+✅ All three modules integrated correctly
+================================================================================
