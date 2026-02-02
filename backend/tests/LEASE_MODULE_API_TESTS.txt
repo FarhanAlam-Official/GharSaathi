@@ -1,0 +1,471 @@
+# LEASE MANAGEMENT MODULE - API TESTS
+## Test Document for Lease Module
+
+**Date:** January 27, 2026  
+**Module:** Lease Management  
+**Prerequisites:** Authentication, Property, and Rental Application modules must be working
+
+---
+
+## SETUP REQUIREMENTS
+
+### Test Data Needed:
+1. **Landlord Account:** Email/password for a landlord user
+2. **Tenant Account:** Email/password for a tenant user
+3. **Property:** At least one property created by landlord (AVAILABLE status)
+4. **Application:** At least one rental application submitted by tenant
+
+### Postman Environment Variables:
+```
+landlord_token: JWT token for landlord
+tenant_token: JWT token for tenant
+property_id: ID of test property
+application_id: ID of test application
+lease_id: ID of created lease
+```
+
+---
+
+## TEST SCENARIOS
+
+### **1. LEASE AUTO-CREATION ON APPLICATION APPROVAL**
+
+**Purpose:** Verify lease is automatically created when landlord approves application
+
+**Steps:**
+1. Login as tenant → Get token
+2. Submit rental application for a property
+3. Login as landlord → Get token
+4. Approve the application
+5. Verify lease was created automatically
+
+**API Calls:**
+
+```http
+### Step 1: Tenant Login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "tenant@test.com",
+  "password": "password123"
+}
+
+### Step 2: Submit Application
+POST http://localhost:8080/api/tenant/applications
+Authorization: Bearer {{tenant_token}}
+Content-Type: application/json
+
+{
+  "propertyId": {{property_id}},
+  "moveInDate": "2026-02-01",
+  "leaseDurationMonths": 12,
+  "numberOfOccupants": 2,
+  "monthlyIncome": 50000,
+  "employmentStatus": "EMPLOYED",
+  "employerName": "Tech Corp",
+  "references": ["John Doe - 555-1234"],
+  "additionalNotes": "Looking forward to renting"
+}
+
+### Step 3: Landlord Login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "landlord@test.com",
+  "password": "password123"
+}
+
+### Step 4: Approve Application (THIS SHOULD AUTO-CREATE LEASE)
+PUT http://localhost:8080/api/landlord/applications/{{application_id}}/approve
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "landlordResponse": "Approved! Welcome to the property."
+}
+
+### Step 5: Verify Lease Created - Get Landlord Leases
+GET http://localhost:8080/api/landlord/leases?status=ACTIVE
+Authorization: Bearer {{landlord_token}}
+
+### Step 6: Get Tenant Leases
+GET http://localhost:8080/api/tenant/leases?status=ACTIVE
+Authorization: Bearer {{tenant_token}}
+```
+
+**Expected Results:**
+- ✅ Application status changes to APPROVED
+- ✅ Property status changes to RENTED
+- ✅ Lease is created automatically with:
+  - leaseStartDate = application moveInDate
+  - leaseEndDate = moveInDate + leaseDurationMonths
+  - monthlyRent = property price
+  - securityDeposit = property securityDeposit
+  - status = ACTIVE
+- ✅ Lease appears in both landlord and tenant lease lists
+
+---
+
+### **2. GET TENANT LEASES**
+
+**Purpose:** Tenant can view their leases
+
+```http
+### Get all leases for tenant
+GET http://localhost:8080/api/tenant/leases
+Authorization: Bearer {{tenant_token}}
+
+### Get active leases only
+GET http://localhost:8080/api/tenant/leases?status=ACTIVE
+Authorization: Bearer {{tenant_token}}
+
+### Get specific lease details
+GET http://localhost:8080/api/tenant/leases/{{lease_id}}
+Authorization: Bearer {{tenant_token}}
+
+### Get active lease (shortcut)
+GET http://localhost:8080/api/tenant/leases/active
+Authorization: Bearer {{tenant_token}}
+```
+
+**Expected Results:**
+- ✅ Returns list of leases with property details
+- ✅ Includes tenant info, landlord info, dates, rent
+- ✅ Shows daysRemaining, durationInMonths, isExpiringSoon
+- ✅ Filtered by status if provided
+
+---
+
+### **3. GET LANDLORD LEASES**
+
+**Purpose:** Landlord can view all leases for their properties
+
+```http
+### Get all leases for landlord
+GET http://localhost:8080/api/landlord/leases
+Authorization: Bearer {{landlord_token}}
+
+### Get active leases only
+GET http://localhost:8080/api/landlord/leases?status=ACTIVE
+Authorization: Bearer {{landlord_token}}
+
+### Get specific lease details
+GET http://localhost:8080/api/landlord/leases/{{lease_id}}
+Authorization: Bearer {{landlord_token}}
+
+### Get active lease for specific property
+GET http://localhost:8080/api/landlord/properties/{{property_id}}/lease/active
+Authorization: Bearer {{landlord_token}}
+```
+
+**Expected Results:**
+- ✅ Returns list of leases for all landlord's properties
+- ✅ Includes full property, tenant, and lease details
+- ✅ Can filter by status
+
+---
+
+### **4. CREATE MANUAL LEASE**
+
+**Purpose:** Landlord can create lease without going through application process
+
+```http
+POST http://localhost:8080/api/landlord/leases
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "propertyId": {{property_id}},
+  "tenantId": {{tenant_id}},
+  "leaseStartDate": "2026-03-01",
+  "leaseEndDate": "2027-03-01",
+  "monthlyRent": 25000,
+  "securityDeposit": 50000,
+  "numberOfOccupants": 3,
+  "specialTerms": "No pets allowed. Utilities included.",
+  "autoRenew": false,
+  "earlyTerminationNoticeDays": 60
+}
+```
+
+**Expected Results:**
+- ✅ Lease created successfully
+- ✅ Property status changes to RENTED
+- ✅ Returns lease details
+
+**Negative Tests:**
+```http
+### Try to create lease when property already has active lease
+POST http://localhost:8080/api/landlord/leases
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "propertyId": {{property_id}},
+  "tenantId": {{tenant_id}},
+  "leaseStartDate": "2026-03-01",
+  "leaseEndDate": "2027-03-01",
+  "monthlyRent": 25000,
+  "securityDeposit": 50000
+}
+```
+**Expected:** 409 Conflict - "An active lease already exists for property"
+
+---
+
+### **5. UPDATE LEASE TERMS**
+
+**Purpose:** Landlord can update lease special terms
+
+```http
+PUT http://localhost:8080/api/landlord/leases/{{lease_id}}
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "specialTerms": "Updated terms: Pets allowed with additional deposit.",
+  "autoRenew": true,
+  "earlyTerminationNoticeDays": 90
+}
+```
+
+**Expected Results:**
+- ✅ Lease updated successfully
+- ✅ Only specified fields are changed
+- ✅ Returns updated lease details
+
+**Negative Test:**
+```http
+### Try to update as tenant (should fail)
+PUT http://localhost:8080/api/landlord/leases/{{lease_id}}
+Authorization: Bearer {{tenant_token}}
+Content-Type: application/json
+
+{
+  "specialTerms": "I want to add my own terms"
+}
+```
+**Expected:** 403 Forbidden - Access denied
+
+---
+
+### **6. TERMINATE LEASE EARLY**
+
+**Purpose:** Either landlord or tenant can terminate lease early
+
+```http
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/terminate
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "terminationDate": "2026-05-01",
+  "terminationReason": "Tenant needs to relocate for work. Mutual agreement reached."
+}
+```
+
+**Expected Results:**
+- ✅ Lease status changes to TERMINATED
+- ✅ Property status changes to AVAILABLE
+- ✅ Termination date and reason recorded
+
+**Negative Tests:**
+```http
+### Try to terminate with insufficient notice
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/terminate
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "terminationDate": "2026-02-01",
+  "terminationReason": "Need to leave immediately"
+}
+```
+**Expected:** 400 Bad Request - "Must provide X days notice"
+
+```http
+### Try to terminate already terminated lease
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/terminate
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "terminationDate": "2026-05-01",
+  "terminationReason": "Trying again"
+}
+```
+**Expected:** 400 Bad Request - "Cannot terminate lease in TERMINATED status"
+
+---
+
+### **7. RENEW LEASE**
+
+**Purpose:** Landlord can extend lease end date
+
+```http
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/renew?newEndDate=2028-02-01
+Authorization: Bearer {{landlord_token}}
+```
+
+**Expected Results:**
+- ✅ Lease end date updated to new date
+- ✅ Lease status remains ACTIVE (or changes to ACTIVE if was EXPIRED)
+- ✅ Property remains RENTED
+
+**Negative Tests:**
+```http
+### Try to renew with past date
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/renew?newEndDate=2025-01-01
+Authorization: Bearer {{landlord_token}}
+```
+**Expected:** 400 Bad Request - "New end date must be after current end date"
+
+```http
+### Try to renew as tenant (should fail)
+POST http://localhost:8080/api/landlord/leases/{{lease_id}}/renew?newEndDate=2028-02-01
+Authorization: Bearer {{tenant_token}}
+```
+**Expected:** 403 Forbidden - Access denied
+
+---
+
+### **8. GET LEASES EXPIRING SOON**
+
+**Purpose:** Landlord can see leases expiring in next X days
+
+```http
+### Get leases expiring in next 30 days
+GET http://localhost:8080/api/landlord/leases/expiring?days=30
+Authorization: Bearer {{landlord_token}}
+
+### Get leases expiring in next 60 days
+GET http://localhost:8080/api/landlord/leases/expiring?days=60
+Authorization: Bearer {{landlord_token}}
+```
+
+**Expected Results:**
+- ✅ Returns list of leases with end date within specified days
+- ✅ Only includes ACTIVE leases
+- ✅ Sorted by end date (earliest first)
+
+---
+
+### **9. LEASE EXPIRATION SCHEDULER TEST**
+
+**Purpose:** Verify scheduler automatically marks leases as expired
+
+**Note:** This test requires waiting or manually triggering the scheduler
+
+**Manual Test Steps:**
+1. Create a lease with end date = today or yesterday
+2. Wait for scheduler to run (2:00 AM daily) OR manually call the scheduler
+3. Verify lease status changes to EXPIRED
+4. Verify property status changes to AVAILABLE
+
+**To manually trigger (for testing):**
+- You can create an admin endpoint to trigger the scheduler
+- Or set lease end date to past and wait for next scheduled run
+- Or temporarily change cron schedule to run every minute: `"0 * * * * *"`
+
+**Expected Results:**
+- ✅ Leases with endDate < today are marked as EXPIRED
+- ✅ Property status changes to AVAILABLE
+- ✅ Scheduler logs the operation
+
+---
+
+## EDGE CASES & ERROR HANDLING
+
+### **Test 1: Multiple Applications for Same Property**
+1. Create 3 applications for same property
+2. Approve one application
+3. Verify:
+   - ✅ One lease created
+   - ✅ Other 2 applications auto-rejected
+   - ✅ Property status = RENTED
+
+### **Test 2: Access Control**
+```http
+### Tenant tries to access another tenant's lease
+GET http://localhost:8080/api/tenant/leases/{{other_tenant_lease_id}}
+Authorization: Bearer {{tenant_token}}
+```
+**Expected:** 403 Forbidden
+
+```http
+### Landlord tries to access another landlord's lease
+GET http://localhost:8080/api/landlord/leases/{{other_landlord_lease_id}}
+Authorization: Bearer {{landlord_token}}
+```
+**Expected:** 403 Forbidden
+
+### **Test 3: Invalid Dates**
+```http
+### Create lease with end date before start date
+POST http://localhost:8080/api/landlord/leases
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "propertyId": {{property_id}},
+  "tenantId": {{tenant_id}},
+  "leaseStartDate": "2027-03-01",
+  "leaseEndDate": "2026-03-01",
+  "monthlyRent": 25000,
+  "securityDeposit": 50000
+}
+```
+**Expected:** 400 Bad Request - "Invalid lease dates"
+
+### **Test 4: Missing Required Fields**
+```http
+POST http://localhost:8080/api/landlord/leases
+Authorization: Bearer {{landlord_token}}
+Content-Type: application/json
+
+{
+  "propertyId": {{property_id}}
+  // Missing required fields
+}
+```
+**Expected:** 400 Bad Request - Validation errors
+
+---
+
+## SUCCESS CRITERIA
+
+✅ **All tests should pass:**
+- [ ] Lease auto-created when application approved
+- [ ] Tenant can view their leases
+- [ ] Landlord can view all leases for their properties
+- [ ] Manual lease creation works
+- [ ] Lease terms can be updated
+- [ ] Early termination works with proper notice
+- [ ] Lease renewal extends end date
+- [ ] Scheduler marks expired leases
+- [ ] Property status updates correctly
+- [ ] Access control enforced (tenants/landlords only see their leases)
+- [ ] All validation errors handled properly
+
+---
+
+## POSTMAN COLLECTION
+
+**Import this collection for easy testing:**
+
+1. Create environment with variables:
+   - `base_url`: http://localhost:8080
+   - `landlord_token`: (set after login)
+   - `tenant_token`: (set after login)
+   - `property_id`: (set from property creation)
+   - `application_id`: (set from application creation)
+   - `lease_id`: (set from lease creation)
+
+2. Run tests in order:
+   - Authentication → Property → Application → Lease
+
+---
+
+**End of Test Document**
