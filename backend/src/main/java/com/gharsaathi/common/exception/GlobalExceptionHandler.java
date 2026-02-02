@@ -16,6 +16,15 @@ import com.gharsaathi.rental.application.exception.ApplicationAccessDeniedExcept
 import com.gharsaathi.rental.application.exception.ApplicationNotFoundException;
 import com.gharsaathi.rental.application.exception.DuplicateApplicationException;
 import com.gharsaathi.rental.application.exception.InvalidApplicationStateException;
+import com.gharsaathi.lease.exception.InvalidLeaseDateException;
+import com.gharsaathi.lease.exception.InvalidLeaseStateException;
+import com.gharsaathi.lease.exception.LeaseAccessDeniedException;
+import com.gharsaathi.lease.exception.LeaseAlreadyExistsException;
+import com.gharsaathi.lease.exception.LeaseNotFoundException;
+import com.gharsaathi.payment.exception.InvalidPaymentOperationException;
+import com.gharsaathi.payment.exception.PaymentGenerationException;
+import com.gharsaathi.payment.exception.PaymentNotFoundException;
+import com.gharsaathi.payment.exception.PaymentUnauthorizedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -138,6 +147,73 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("error", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Lease-specific exception handlers
+    
+    @ExceptionHandler(LeaseNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleLeaseNotFound(LeaseNotFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(LeaseAlreadyExistsException.class)
+    public ResponseEntity<Map<String, String>> handleLeaseAlreadyExists(LeaseAlreadyExistsException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(LeaseAccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleLeaseAccessDenied(LeaseAccessDeniedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(InvalidLeaseStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidLeaseState(InvalidLeaseStateException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(InvalidLeaseDateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidLeaseDate(InvalidLeaseDateException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Payment-specific exception handlers
+    
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handlePaymentNotFound(PaymentNotFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(InvalidPaymentOperationException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidPaymentOperation(InvalidPaymentOperationException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(PaymentUnauthorizedException.class)
+    public ResponseEntity<Map<String, String>> handlePaymentUnauthorized(PaymentUnauthorizedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(PaymentGenerationException.class)
+    public ResponseEntity<Map<String, String>> handlePaymentGeneration(PaymentGenerationException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
     @ExceptionHandler(Exception.class)
