@@ -27,6 +27,7 @@ import com.gharsaathi.rental.application.repository.RentalApplicationRepository;
 import com.gharsaathi.auth.model.User;
 import com.gharsaathi.auth.repository.UserRepository;
 import com.gharsaathi.common.exception.PropertyNotFoundException;
+import com.gharsaathi.lease.service.LeaseService;
 import com.gharsaathi.property.model.Property;
 import com.gharsaathi.property.model.PropertyStatus;
 import com.gharsaathi.property.repository.PropertyRepository;
@@ -46,6 +47,7 @@ public class RentalApplicationService {
     private final RentalApplicationRepository applicationRepository;
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
+    private final LeaseService leaseService;
 
     /**
      * Submit a new rental application
@@ -211,6 +213,18 @@ public class RentalApplicationService {
         application.setLandlordResponse(landlordResponse);
         application.setReviewedAt(LocalDateTime.now());
 
+        // Save application first
+        RentalApplication updatedApplication = applicationRepository.save(application);
+
+        // Create lease from approved application
+        try {
+            leaseService.createLeaseFromApplication(updatedApplication);
+            log.info("Lease created successfully for application: {}", applicationId);
+        } catch (Exception e) {
+            log.error("Failed to create lease for application: {}", applicationId, e);
+            // Continue execution - lease creation failure should not block approval
+        }
+
         // Update property status to RENTED
         Property property = application.getProperty();
         property.setStatus(PropertyStatus.RENTED);
@@ -230,7 +244,6 @@ public class RentalApplicationService {
             }
         }
 
-        RentalApplication updatedApplication = applicationRepository.save(application);
         log.info("Application {} approved successfully", applicationId);
 
         return mapToResponse(updatedApplication);
