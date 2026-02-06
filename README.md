@@ -287,22 +287,48 @@ frontend/
 backend/
 └── src/main/java/com/gharsaathi/
     ├── GharSaathiApplication.java    # Main application class
-    ├── auth/                         # Authentication module
+    ├── auth/                         # Authentication & authorization
     │   ├── controller/
-    │   │   └── AuthController.java
     │   ├── service/
-    │   │   ├── AuthService.java
-    │   │   ├── RefreshTokenService.java
-    │   │   └── TokenBlacklistService.java
     │   ├── model/
-    │   │   ├── User.java
-    │   │   ├── Role.java
-    │   │   ├── RefreshToken.java
-    │   │   └── TokenBlacklist.java
     │   └── repository/
-    │       ├── UserRepository.java
-    │       ├── RefreshTokenRepository.java
-    │       └── TokenBlacklistRepository.java
+    ├── property/                     # Property management
+    │   ├── controller/
+    │   ├── service/
+    │   ├── model/
+    │   ├── repository/
+    │   └── review/                   # Property reviews subdomain
+    │       ├── controller/
+    │       ├── service/
+    │       ├── model/
+    │       ├── repository/
+    │       └── dto/
+    ├── rental/                       # Rental domain
+    │   └── application/              # Rental applications
+    │       ├── controller/
+    │       ├── service/
+    │       ├── model/
+    │       ├── repository/
+    │       ├── dto/
+    │       └── exception/
+    ├── lease/                        # Lease management
+    │   ├── controller/
+    │   ├── service/
+    │   ├── model/
+    │   ├── repository/
+    │   └── scheduler/
+    ├── payment/                      # Payment system
+    │   ├── controller/
+    │   ├── service/
+    │   ├── model/
+    │   ├── repository/
+    │   └── scheduler/
+    ├── notification/                 # Notification system
+    │   ├── controller/
+    │   ├── service/
+    │   ├── model/
+    │   ├── repository/
+    │   └── dto/
     └── common/                       # Shared components
         ├── dto/                      # Data Transfer Objects
         ├── security/                 # Security config
