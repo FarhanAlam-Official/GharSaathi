@@ -1,0 +1,608 @@
+# Payment System API Tests
+
+This document contains test cases for the Payment System Module APIs.
+
+## Prerequisites
+- Backend server running
+- Valid JWT tokens for different user roles
+- At least one lease exists in the system
+
+---
+
+## API Endpoints
+
+### 1. Get Payment by ID
+**Endpoint:** `GET /api/payments/{paymentId}`  
+**Roles:** TENANT, LANDLORD, ADMIN  
+**Description:** Get details of a specific payment
+
+**Test Case 1.1: Tenant views their own payment**
+```http
+GET http://localhost:8080/api/payments/1
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "id": 1,
+  "lease": {
+    "id": 1,
+    "startDate": "2026-01-01",
+    "endDate": "2026-12-31",
+    "leaseStatus": "ACTIVE"
+  },
+  "tenant": {
+    "id": 1,
+    "fullName": "John Doe",
+    "email": "tenant@example.com",
+    "phone": "9841234567"
+  },
+  "landlord": {
+    "id": 2,
+    "fullName": "Jane Smith",
+    "email": "landlord@example.com",
+    "phone": "9847654321"
+  },
+  "property": {
+    "id": 1,
+    "title": "2BHK Apartment in Kathmandu",
+    "address": "Thamel, Kathmandu",
+    "city": "Kathmandu"
+  },
+  "paymentType": "SECURITY_DEPOSIT",
+  "amount": 20000.00,
+  "dueDate": "2026-01-01",
+  "paidDate": null,
+  "status": "PENDING",
+  "paymentMethod": null,
+  "transactionReference": null,
+  "monthYear": null,
+  "displayMonth": null,
+  "notes": null,
+  "lateFee": 0.00,
+  "confirmedByLandlord": false,
+  "confirmationDate": null,
+  "overdue": false,
+  "daysOverdue": 0,
+  "createdAt": "2026-01-01T10:00:00",
+  "updatedAt": "2026-01-01T10:00:00"
+}
+```
+
+**Test Case 1.2: Unauthorized access**
+```http
+GET http://localhost:8080/api/payments/1
+Authorization: Bearer {different_tenant_jwt_token}
+```
+
+**Expected Response (403 Forbidden):**
+```json
+{
+  "error": "You are not authorized to access this payment"
+}
+```
+
+---
+
+### 2. Get All Payments for a Lease
+**Endpoint:** `GET /api/payments/lease/{leaseId}`  
+**Roles:** TENANT, LANDLORD, ADMIN  
+**Description:** Get all payments for a specific lease
+
+**Test Case 2.1: Get all payments for a lease**
+```http
+GET http://localhost:8080/api/payments/lease/1
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "paymentType": "SECURITY_DEPOSIT",
+    "amount": 20000.00,
+    "dueDate": "2026-01-01",
+    "status": "PENDING",
+    ...
+  },
+  {
+    "id": 2,
+    "paymentType": "RENT",
+    "amount": 10000.00,
+    "dueDate": "2026-01-01",
+    "monthYear": "2026-01",
+    "displayMonth": "January 2026",
+    "status": "PENDING",
+    ...
+  },
+  {
+    "id": 3,
+    "paymentType": "RENT",
+    "amount": 10000.00,
+    "dueDate": "2026-02-01",
+    "monthYear": "2026-02",
+    "displayMonth": "February 2026",
+    "status": "PENDING",
+    ...
+  }
+  // ... more monthly payments
+]
+```
+
+---
+
+### 3. Get Payments for Tenant (Paginated)
+**Endpoint:** `GET /api/payments/tenant/{tenantId}?status={status}&page={page}&size={size}`  
+**Roles:** TENANT (own), ADMIN (all)  
+**Description:** Get paginated list of payments for a tenant with optional status filter
+
+**Test Case 3.1: Get all payments for tenant**
+```http
+GET http://localhost:8080/api/payments/tenant/1?page=0&size=10
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Test Case 3.2: Get pending payments for tenant**
+```http
+GET http://localhost:8080/api/payments/tenant/1?status=PENDING&page=0&size=10
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "payments": [
+    {
+      "id": 1,
+      "paymentType": "SECURITY_DEPOSIT",
+      "amount": 20000.00,
+      "status": "PENDING",
+      ...
+    }
+  ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 1,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
+```
+
+---
+
+### 4. Get Payments for Landlord (Paginated)
+**Endpoint:** `GET /api/payments/landlord/{landlordId}?status={status}&page={page}&size={size}`  
+**Roles:** LANDLORD (own), ADMIN (all)  
+**Description:** Get paginated list of payments for a landlord with optional status filter
+
+**Test Case 4.1: Get paid payments awaiting confirmation**
+```http
+GET http://localhost:8080/api/payments/landlord/2?status=PAID&page=0&size=10
+Authorization: Bearer {landlord_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "payments": [
+    {
+      "id": 1,
+      "paymentType": "SECURITY_DEPOSIT",
+      "amount": 20000.00,
+      "status": "PAID",
+      "paidDate": "2026-01-01",
+      "paymentMethod": "ESEWA",
+      "transactionReference": "ESW-2026-001",
+      "confirmedByLandlord": false,
+      ...
+    }
+  ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 1,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
+```
+
+---
+
+### 5. Mark Payment as Paid (Tenant Action)
+**Endpoint:** `PUT /api/payments/{paymentId}/mark-paid`  
+**Roles:** TENANT (own payments only)  
+**Description:** Tenant marks a payment as paid
+
+**Test Case 5.1: Tenant marks payment as paid**
+```http
+PUT http://localhost:8080/api/payments/1/mark-paid
+Authorization: Bearer {tenant_jwt_token}
+Content-Type: application/json
+
+{
+  "paymentMethod": "ESEWA",
+  "paidDate": "2026-01-01",
+  "transactionReference": "ESW-2026-001",
+  "lateFee": 0.00,
+  "notes": "Paid via eSewa on time"
+}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "id": 1,
+  "status": "PAID",
+  "paidDate": "2026-01-01",
+  "paymentMethod": "ESEWA",
+  "transactionReference": "ESW-2026-001",
+  "confirmedByLandlord": false,
+  ...
+}
+```
+
+**Test Case 5.2: Invalid status transition**
+```http
+PUT http://localhost:8080/api/payments/1/mark-paid
+Authorization: Bearer {tenant_jwt_token}
+Content-Type: application/json
+
+{
+  "paymentMethod": "CASH",
+  "paidDate": "2026-01-01"
+}
+```
+
+**Expected Response (400 Bad Request) - If payment is already paid:**
+```json
+{
+  "error": "Payment cannot be marked as paid. Current status: PAID"
+}
+```
+
+**Test Case 5.3: Validation errors**
+```http
+PUT http://localhost:8080/api/payments/1/mark-paid
+Authorization: Bearer {tenant_jwt_token}
+Content-Type: application/json
+
+{
+  "paymentMethod": "ESEWA",
+  "paidDate": "2026-12-31"
+}
+```
+
+**Expected Response (400 Bad Request) - Future date:**
+```json
+{
+  "paidDate": "Payment date cannot be in the future"
+}
+```
+
+---
+
+### 6. Confirm Payment (Landlord Action)
+**Endpoint:** `PUT /api/payments/{paymentId}/confirm`  
+**Roles:** LANDLORD (own payments only)  
+**Description:** Landlord confirms a payment that was marked as paid by tenant
+
+**Test Case 6.1: Landlord confirms payment**
+```http
+PUT http://localhost:8080/api/payments/1/confirm
+Authorization: Bearer {landlord_jwt_token}
+Content-Type: application/json
+
+{
+  "confirmationDate": "2026-01-02",
+  "notes": "Payment verified in bank account"
+}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "id": 1,
+  "status": "CONFIRMED",
+  "paidDate": "2026-01-01",
+  "confirmedByLandlord": true,
+  "confirmationDate": "2026-01-02",
+  "notes": "Paid via eSewa on time\nPayment verified in bank account",
+  ...
+}
+```
+
+**Test Case 6.2: Cannot confirm pending payment**
+```http
+PUT http://localhost:8080/api/payments/2/confirm
+Authorization: Bearer {landlord_jwt_token}
+Content-Type: application/json
+
+{
+  "confirmationDate": "2026-01-02"
+}
+```
+
+**Expected Response (400 Bad Request):**
+```json
+{
+  "error": "Payment cannot be confirmed. Current status: PENDING"
+}
+```
+
+---
+
+### 7. Get Payment Statistics for Tenant
+**Endpoint:** `GET /api/payments/tenant/{tenantId}/statistics`  
+**Roles:** TENANT (own), ADMIN (all)  
+**Description:** Get payment statistics for a tenant
+
+**Test Case 7.1: Get tenant payment statistics**
+```http
+GET http://localhost:8080/api/payments/tenant/1/statistics
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "totalPayments": 13,
+  "pendingPayments": 10,
+  "paidPayments": 2,
+  "confirmedPayments": 1,
+  "overduePayments": 0,
+  "totalAmount": 140000.00,
+  "pendingAmount": 100000.00,
+  "paidAmount": 20000.00,
+  "confirmedAmount": 20000.00,
+  "overdueAmount": 0.00,
+  "totalLateFees": 0.00
+}
+```
+
+---
+
+### 8. Get Payment Statistics for Landlord
+**Endpoint:** `GET /api/payments/landlord/{landlordId}/statistics`  
+**Roles:** LANDLORD (own), ADMIN (all)  
+**Description:** Get payment statistics for a landlord
+
+**Test Case 8.1: Get landlord payment statistics**
+```http
+GET http://localhost:8080/api/payments/landlord/2/statistics
+Authorization: Bearer {landlord_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+{
+  "totalPayments": 13,
+  "pendingPayments": 10,
+  "paidPayments": 2,
+  "confirmedPayments": 1,
+  "overduePayments": 0,
+  "totalAmount": 140000.00,
+  "pendingAmount": 100000.00,
+  "paidAmount": 20000.00,
+  "confirmedAmount": 20000.00,
+  "overdueAmount": 0.00,
+  "totalLateFees": 0.00
+}
+```
+
+---
+
+### 9. Get Upcoming Payments for Tenant
+**Endpoint:** `GET /api/payments/tenant/{tenantId}/upcoming`  
+**Roles:** TENANT (own), ADMIN (all)  
+**Description:** Get upcoming payments for next 30 days
+
+**Test Case 9.1: Get upcoming payments**
+```http
+GET http://localhost:8080/api/payments/tenant/1/upcoming
+Authorization: Bearer {tenant_jwt_token}
+```
+
+**Expected Response (200 OK):**
+```json
+[
+  {
+    "id": 2,
+    "paymentType": "RENT",
+    "amount": 10000.00,
+    "dueDate": "2026-01-01",
+    "monthYear": "2026-01",
+    "displayMonth": "January 2026",
+    "status": "PENDING",
+    ...
+  },
+  {
+    "id": 3,
+    "paymentType": "RENT",
+    "amount": 10000.00,
+    "dueDate": "2026-02-01",
+    "monthYear": "2026-02",
+    "displayMonth": "February 2026",
+    "status": "PENDING",
+    ...
+  }
+]
+```
+
+---
+
+## Test Scenarios
+
+### Scenario 1: Complete Payment Workflow (Happy Path)
+
+**Step 1:** Landlord approves rental application
+- Lease is automatically created
+- 13 payments are auto-generated (1 security deposit + 12 monthly rents)
+- All payments have status PENDING
+
+**Step 2:** Tenant views their payments
+```http
+GET /api/payments/tenant/1
+```
+- Should see all 13 payments
+
+**Step 3:** Tenant pays security deposit
+```http
+PUT /api/payments/1/mark-paid
+{
+  "paymentMethod": "ESEWA",
+  "paidDate": "2026-01-01",
+  "transactionReference": "ESW-2026-001"
+}
+```
+- Payment status changes to PAID
+
+**Step 4:** Landlord confirms security deposit
+```http
+PUT /api/payments/1/confirm
+{
+  "confirmationDate": "2026-01-02"
+}
+```
+- Payment status changes to CONFIRMED
+
+**Step 5:** Tenant pays January rent
+```http
+PUT /api/payments/2/mark-paid
+{
+  "paymentMethod": "KHALTI",
+  "paidDate": "2026-01-01",
+  "transactionReference": "KHA-2026-001"
+}
+```
+
+**Step 6:** Landlord confirms January rent
+```http
+PUT /api/payments/2/confirm
+{
+  "confirmationDate": "2026-01-02"
+}
+```
+
+---
+
+### Scenario 2: Overdue Payments
+
+**Step 1:** Payment due date passes without payment
+- Scheduler runs daily at 3:00 AM
+- Payment status changes from PENDING to OVERDUE
+- Late fee is calculated (2% per month, pro-rated daily)
+
+**Step 2:** Tenant views overdue payments
+```http
+GET /api/payments/tenant/1?status=OVERDUE
+```
+
+**Step 3:** Tenant pays with late fee
+```http
+PUT /api/payments/3/mark-paid
+{
+  "paymentMethod": "BANK_TRANSFER",
+  "paidDate": "2026-02-05",
+  "lateFee": 100.00
+}
+```
+
+---
+
+### Scenario 3: Lease Termination
+
+**Step 1:** Landlord terminates lease
+```http
+PUT /api/leases/1/terminate
+{
+  "terminationDate": "2026-06-30",
+  "terminationReason": "Tenant requested early termination"
+}
+```
+
+**Step 2:** Check payments
+- Future payments (after June 30) are cancelled
+- Past due payments remain PENDING/OVERDUE
+
+---
+
+### Scenario 4: Lease Renewal
+
+**Step 1:** Landlord renews lease
+```http
+PUT /api/leases/1/renew?newEndDate=2027-12-31
+```
+
+**Step 2:** Check payments
+- New monthly payments generated for extension period
+- Original payments remain unchanged
+
+---
+
+## Error Cases
+
+### 1. Payment Not Found
+```http
+GET /api/payments/999
+```
+**Response (404):**
+```json
+{
+  "error": "Payment not found with ID: 999"
+}
+```
+
+### 2. Unauthorized Access
+```http
+GET /api/payments/1
+Authorization: Bearer {other_user_token}
+```
+**Response (403):**
+```json
+{
+  "error": "You are not authorized to access this payment"
+}
+```
+
+### 3. Invalid Payment Operation
+```http
+PUT /api/payments/1/mark-paid
+```
+*When payment is already confirmed*
+
+**Response (400):**
+```json
+{
+  "error": "Payment cannot be marked as paid. Current status: CONFIRMED"
+}
+```
+
+### 4. Validation Errors
+```http
+PUT /api/payments/1/mark-paid
+{
+  "paidDate": "2026-12-31"
+}
+```
+*Missing paymentMethod*
+
+**Response (400):**
+```json
+{
+  "paymentMethod": "Payment method is required"
+}
+```
+
+---
+
+## Notes
+- All dates are in `YYYY-MM-DD` format
+- All amounts are in Nepali Rupees (NPR)
+- Payment methods include: CASH, BANK_TRANSFER, ESEWA, KHALTI, IME_PAY, CONNECT_IPS, OTHER
+- Late fee is calculated at 2% per month pro-rated daily
+- Scheduler runs daily at 3:00 AM to mark overdue payments
+- Payment workflow: PENDING → PAID (tenant) → CONFIRMED (landlord)
+- Payments are auto-generated when lease is created
