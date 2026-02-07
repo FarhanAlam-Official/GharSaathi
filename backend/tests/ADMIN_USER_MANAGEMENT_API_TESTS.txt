@@ -1,0 +1,922 @@
+================================================================================
+                ADMIN USER MANAGEMENT MODULE - API TESTS
+================================================================================
+Module: Admin User Management
+Endpoints: 7 (List Users, Get User, Suspend, Unsuspend, Change Role, Delete)
+Base URL: http://localhost:8080/api/admin/users
+Authentication: Required (ADMIN role only)
+Status: ✅ Implemented & Compiled
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Backend server running on port 8080
+2. Database with users table populated
+3. Valid JWT token with ADMIN role
+
+To get admin token, login as admin:
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"adminpass123"}'
+
+Save the token from response: "token": "eyJhbGc..."
+
+================================================================================
+                        TEST 1: GET ALL USERS
+================================================================================
+
+Endpoint: GET /api/admin/users
+Description: List all users in the system
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST (All Users):
+-------------------
+curl -X GET http://localhost:8080/api/admin/users \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+[
+  {
+    "id": 1,
+    "fullName": "John Doe",
+    "email": "john.doe@test.com",
+    "phoneNumber": "9812345678",
+    "role": "TENANT",
+    "enabled": true,
+    "profilePicture": null,
+    "emailVerified": false,
+    "phoneVerified": false,
+    "lastLogin": "2026-01-28T10:30:00",
+    "createdAt": "2026-01-15T09:00:00",
+    "updatedAt": "2026-01-28T10:30:00",
+    "propertyCount": null,
+    "applicationCount": 5,
+    "activeLeaseCount": 2
+  },
+  {
+    "id": 5,
+    "fullName": "Jane Smith",
+    "email": "jane.smith@test.com",
+    "phoneNumber": "9823456789",
+    "role": "LANDLORD",
+    "enabled": true,
+    "profilePicture": "https://example.com/profiles/jane.jpg",
+    "emailVerified": true,
+    "phoneVerified": true,
+    "lastLogin": "2026-01-28T14:15:00",
+    "createdAt": "2026-01-10T11:00:00",
+    "updatedAt": "2026-01-28T14:15:00",
+    "propertyCount": 5,
+    "applicationCount": null,
+    "activeLeaseCount": 3
+  }
+]
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Response is array of AdminUserDTO
+✓ Each user has all profile fields
+✓ Tenant users have applicationCount and activeLeaseCount
+✓ Landlord users have propertyCount and activeLeaseCount
+✓ Admin users have no aggregations (null)
+✓ All users include enabled status
+✓ Timestamps are ISO 8601 format
+
+ROLE-SPECIFIC AGGREGATIONS:
+----------------------------
+- TENANT: applicationCount (total applications), activeLeaseCount
+- LANDLORD: propertyCount (total properties), activeLeaseCount
+- ADMIN: No aggregations (all null)
+
+--------------------------------------------------------------------------------
+REQUEST (Filter by Role - Tenants Only):
+-----------------------------------------
+curl -X GET "http://localhost:8080/api/admin/users?role=TENANT" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+[
+  {
+    "id": 1,
+    "fullName": "John Doe",
+    "email": "john.doe@test.com",
+    "role": "TENANT",
+    "enabled": true,
+    "applicationCount": 5,
+    "activeLeaseCount": 2,
+    ...
+  },
+  {
+    "id": 2,
+    "fullName": "Alice Johnson",
+    "email": "alice@test.com",
+    "role": "TENANT",
+    "enabled": true,
+    "applicationCount": 3,
+    "activeLeaseCount": 1,
+    ...
+  }
+]
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ All returned users have role = "TENANT"
+✓ No landlords or admins in response
+✓ Tenant-specific aggregations present
+
+--------------------------------------------------------------------------------
+REQUEST (Filter by Role - Landlords Only):
+-------------------------------------------
+curl -X GET "http://localhost:8080/api/admin/users?role=LANDLORD" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+VALIDATION CHECKS:
+------------------
+✓ All returned users have role = "LANDLORD"
+✓ propertyCount and activeLeaseCount present
+✓ applicationCount is null
+
+--------------------------------------------------------------------------------
+REQUEST (Filter by Role - Admins Only):
+----------------------------------------
+curl -X GET "http://localhost:8080/api/admin/users?role=ADMIN" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+VALIDATION CHECKS:
+------------------
+✓ All returned users have role = "ADMIN"
+✓ All aggregation counts are null
+
+ERROR CASES TO TEST:
+--------------------
+1. Non-admin user attempts access:
+   curl -X GET http://localhost:8080/api/admin/users \
+     -H "Authorization: Bearer TENANT_TOKEN"
+   Expected: 403 Forbidden
+
+2. No token provided:
+   Expected: 401 Unauthorized
+
+3. Invalid role filter:
+   ?role=INVALID_ROLE
+   Expected: 400 Bad Request
+
+================================================================================
+                        TEST 2: GET SUSPENDED USERS
+================================================================================
+
+Endpoint: GET /api/admin/users/suspended
+Description: List all suspended (disabled) users
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/admin/users/suspended \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+[
+  {
+    "id": 10,
+    "fullName": "Suspended User",
+    "email": "suspended@test.com",
+    "phoneNumber": "9834567890",
+    "role": "TENANT",
+    "enabled": false,
+    "profilePicture": null,
+    "emailVerified": false,
+    "phoneVerified": false,
+    "lastLogin": "2026-01-20T08:00:00",
+    "createdAt": "2026-01-01T10:00:00",
+    "updatedAt": "2026-01-25T15:00:00",
+    "propertyCount": null,
+    "applicationCount": 2,
+    "activeLeaseCount": 0
+  }
+]
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ All users have enabled = false
+✓ Response may be empty array if no suspended users
+✓ Aggregations still calculated for suspended users
+
+ERROR CASES TO TEST:
+--------------------
+1. Non-admin access:
+   Expected: 403 Forbidden
+
+================================================================================
+                        TEST 3: GET USER BY ID
+================================================================================
+
+Endpoint: GET /api/admin/users/{userId}
+Description: Get detailed information about specific user
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/admin/users/5 \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 5,
+  "fullName": "Jane Smith",
+  "email": "jane.smith@test.com",
+  "phoneNumber": "9823456789",
+  "role": "LANDLORD",
+  "enabled": true,
+  "profilePicture": "https://example.com/profiles/jane.jpg",
+  "emailVerified": true,
+  "phoneVerified": true,
+  "lastLogin": "2026-01-28T14:15:00",
+  "createdAt": "2026-01-10T11:00:00",
+  "updatedAt": "2026-01-28T14:15:00",
+  "propertyCount": 5,
+  "applicationCount": null,
+  "activeLeaseCount": 3
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ User ID matches requested ID
+✓ All profile fields present
+✓ Role-specific aggregations calculated
+✓ Landlord has propertyCount and activeLeaseCount
+✓ applicationCount is null for landlords
+
+ERROR CASES TO TEST:
+--------------------
+1. User not found:
+   curl -X GET http://localhost:8080/api/admin/users/99999 \
+     -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
+   Expected: 400 Bad Request - "User not found with id: 99999"
+
+2. Invalid user ID format:
+   curl -X GET http://localhost:8080/api/admin/users/abc
+   Expected: 400 Bad Request
+
+3. Non-admin access:
+   Expected: 403 Forbidden
+
+================================================================================
+                        TEST 4: SUSPEND USER
+================================================================================
+
+Endpoint: PATCH /api/admin/users/{userId}/suspend
+Description: Suspend (disable) a user account
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X PATCH http://localhost:8080/api/admin/users/10/suspend \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Violation of terms of service - spam applications"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 10,
+  "fullName": "User To Suspend",
+  "email": "user@test.com",
+  "phoneNumber": "9845678901",
+  "role": "TENANT",
+  "enabled": false,
+  "profilePicture": null,
+  "emailVerified": true,
+  "phoneVerified": false,
+  "lastLogin": "2026-01-27T10:00:00",
+  "createdAt": "2026-01-20T09:00:00",
+  "updatedAt": "2026-01-28T15:05:00",
+  "propertyCount": null,
+  "applicationCount": 8,
+  "activeLeaseCount": 1
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ enabled changed from true to false
+✓ updatedAt timestamp updated
+✓ User cannot login after suspension
+✓ Existing JWT tokens become ineffective (user.enabled checked)
+✓ All other fields unchanged
+
+SUSPENSION IMPACT ACROSS MODULES:
+----------------------------------
+1. Authentication: User cannot login (returns 401)
+2. Existing tokens: Still valid in JWT but Spring Security blocks if enabled=false
+3. Properties (Landlord): Cannot create/edit properties
+4. Applications (Tenant): Cannot create new applications
+5. Leases: Active leases remain but no new ones can be created
+6. Payments: Cannot make payments
+7. All endpoints: Access denied for suspended user
+
+POST-SUSPENSION TESTS:
+----------------------
+1. Try to login as suspended user:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"user@test.com","password":"password"}'
+   Expected: 401 Unauthorized - "User account is disabled"
+
+2. Use existing token (before suspension):
+   curl -X GET http://localhost:8080/api/users/profile \
+     -H "Authorization: Bearer OLD_TOKEN"
+   Expected: 403 Forbidden - User disabled check in security
+
+3. Try to create property (if landlord):
+   Expected: 403 Forbidden
+
+ERROR CASES TO TEST:
+--------------------
+1. Admin suspending themselves:
+   curl -X PATCH http://localhost:8080/api/admin/users/1/suspend \
+     -H "Authorization: Bearer ADMIN_TOKEN_FOR_USER_1" \
+     -d '{"reason":"Test"}'
+   Expected: 400 Bad Request - "Admins cannot suspend themselves"
+
+2. User already suspended:
+   curl -X PATCH http://localhost:8080/api/admin/users/10/suspend \
+     -d '{"reason":"Already suspended"}'
+   Expected: 400 Bad Request - "User is already suspended"
+
+3. Missing reason:
+   curl -X PATCH http://localhost:8080/api/admin/users/10/suspend \
+     -d '{}'
+   Expected: 400 Bad Request - "Reason is required"
+
+4. Empty reason:
+   curl -X PATCH http://localhost:8080/api/admin/users/10/suspend \
+     -d '{"reason":""}'
+   Expected: 400 Bad Request - "Reason is required"
+
+5. Non-admin access:
+   Expected: 403 Forbidden
+
+6. User not found:
+   curl -X PATCH http://localhost:8080/api/admin/users/99999/suspend
+   Expected: 400 Bad Request - "User not found"
+
+================================================================================
+                        TEST 5: UNSUSPEND USER
+================================================================================
+
+Endpoint: PATCH /api/admin/users/{userId}/unsuspend
+Description: Reactivate (unsuspend) a suspended user account
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X PATCH http://localhost:8080/api/admin/users/10/unsuspend \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 10,
+  "fullName": "User To Suspend",
+  "email": "user@test.com",
+  "phoneNumber": "9845678901",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": true,
+  "phoneVerified": false,
+  "lastLogin": "2026-01-27T10:00:00",
+  "createdAt": "2026-01-20T09:00:00",
+  "updatedAt": "2026-01-28T15:10:00",
+  "propertyCount": null,
+  "applicationCount": 8,
+  "activeLeaseCount": 1
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ enabled changed from false to true
+✓ updatedAt timestamp updated
+✓ User can login again
+✓ All access restored
+✓ All other fields unchanged
+
+POST-UNSUSPENSION TESTS:
+------------------------
+1. User can login:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"user@test.com","password":"password"}'
+   Expected: 200 OK with JWT token
+
+2. User can access their resources:
+   curl -X GET http://localhost:8080/api/users/profile \
+     -H "Authorization: Bearer NEW_TOKEN"
+   Expected: 200 OK
+
+ERROR CASES TO TEST:
+--------------------
+1. User already active:
+   curl -X PATCH http://localhost:8080/api/admin/users/5/unsuspend
+   Expected: 400 Bad Request - "User is already active"
+
+2. Non-admin access:
+   Expected: 403 Forbidden
+
+3. User not found:
+   Expected: 400 Bad Request
+
+================================================================================
+                        TEST 6: CHANGE USER ROLE
+================================================================================
+
+Endpoint: PATCH /api/admin/users/{userId}/role
+Description: Change a user's role (TENANT, LANDLORD, ADMIN)
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST (Tenant to Landlord):
+------------------------------
+curl -X PATCH http://localhost:8080/api/admin/users/10/role \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newRole": "LANDLORD",
+    "reason": "User requested to list properties"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 10,
+  "fullName": "User Changing Role",
+  "email": "user@test.com",
+  "phoneNumber": "9845678901",
+  "role": "LANDLORD",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": true,
+  "phoneVerified": false,
+  "lastLogin": "2026-01-27T10:00:00",
+  "createdAt": "2026-01-20T09:00:00",
+  "updatedAt": "2026-01-28T15:15:00",
+  "propertyCount": 0,
+  "applicationCount": null,
+  "activeLeaseCount": 0
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ role changed from "TENANT" to "LANDLORD"
+✓ updatedAt timestamp updated
+✓ Aggregations updated (now shows propertyCount instead of applicationCount)
+✓ Old JWT token still valid until expiry (has old role)
+✓ New login returns token with new role
+✓ All other fields unchanged
+
+ROLE CHANGE IMPACT:
+-------------------
+1. **TENANT → LANDLORD:**
+   - Gains: Can create properties, manage applications
+   - Loses: Cannot create rental applications as tenant
+   - Existing: Tenant applications remain, active leases unchanged
+
+2. **LANDLORD → TENANT:**
+   - Gains: Can create rental applications
+   - Loses: Cannot manage properties
+   - Existing: Properties remain but inaccessible until role changed back
+
+3. **Any → ADMIN:**
+   - Gains: Full administrative access
+   - Loses: Normal user operations may be restricted
+   - Existing: All previous data remains
+
+4. **ADMIN → Any:**
+   - Gains: Can operate as normal user
+   - Loses: Administrative privileges
+   - Note: Be careful - cannot change own role back
+
+JWT TOKEN BEHAVIOR:
+-------------------
+- Current JWT: Remains valid with OLD role until expiry
+- User must login again to get JWT with NEW role
+- Role is stored in JWT payload, not queried on each request
+- Grace period exists where old permissions still work
+
+POST-ROLE-CHANGE TESTS:
+-----------------------
+1. Old token still works with old role:
+   curl -X GET http://localhost:8080/api/landlord/properties \
+     -H "Authorization: Bearer OLD_TENANT_TOKEN"
+   Expected: 403 Forbidden (still has TENANT role in JWT)
+
+2. Login again to get new token:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"user@test.com","password":"password"}'
+   Expected: 200 OK with JWT containing LANDLORD role
+
+3. New token works with new role:
+   curl -X POST http://localhost:8080/api/landlord/properties \
+     -H "Authorization: Bearer NEW_LANDLORD_TOKEN" \
+     -d '{...property data...}'
+   Expected: 201 Created
+
+ERROR CASES TO TEST:
+--------------------
+1. Admin changing own role:
+   curl -X PATCH http://localhost:8080/api/admin/users/1/role \
+     -H "Authorization: Bearer ADMIN_TOKEN_FOR_USER_1" \
+     -d '{"newRole":"TENANT"}'
+   Expected: 400 Bad Request - "Admins cannot change their own role"
+
+2. User already has that role:
+   curl -X PATCH http://localhost:8080/api/admin/users/5/role \
+     -d '{"newRole":"LANDLORD"}' (user is already landlord)
+   Expected: 400 Bad Request - "User already has role: LANDLORD"
+
+3. Missing new role:
+   curl -X PATCH http://localhost:8080/api/admin/users/10/role \
+     -d '{}'
+   Expected: 400 Bad Request - "New role is required"
+
+4. Invalid role:
+   curl -X PATCH http://localhost:8080/api/admin/users/10/role \
+     -d '{"newRole":"SUPER_ADMIN"}'
+   Expected: 400 Bad Request - Invalid enum value
+
+5. Non-admin access:
+   Expected: 403 Forbidden
+
+6. User not found:
+   Expected: 400 Bad Request
+
+================================================================================
+                        TEST 7: DELETE USER (Soft Delete)
+================================================================================
+
+Endpoint: DELETE /api/admin/users/{userId}
+Description: Delete (suspend) a user account
+Role Required: ADMIN
+Expected Status: 200 OK
+
+NOTE: This is a SOFT DELETE - user is just suspended, not removed from database
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X DELETE http://localhost:8080/api/admin/users/15 \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+"User deleted successfully"
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Response message confirms deletion
+✓ User record still exists in database
+✓ User.enabled set to false (soft delete)
+✓ User cannot login
+✓ updatedAt timestamp updated
+
+POST-DELETE VERIFICATION:
+-------------------------
+1. Verify user still exists but disabled:
+   curl -X GET http://localhost:8080/api/admin/users/15 \
+     -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
+   Expected: 200 OK with enabled = false
+
+2. User appears in suspended users list:
+   curl -X GET http://localhost:8080/api/admin/users/suspended
+   Expected: 200 OK, includes user 15
+
+3. User cannot login:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"deleted@test.com","password":"password"}'
+   Expected: 401 Unauthorized
+
+SOFT DELETE vs HARD DELETE:
+----------------------------
+Current implementation: SOFT DELETE (enabled = false)
+- User data preserved
+- Can be unsuspended later
+- Maintains referential integrity
+- Historical data intact (applications, leases, payments)
+
+Future hard delete would require:
+- Cascade delete all related records
+- Or set foreign keys to NULL
+- Or prevent delete if relationships exist
+- Backup data before deletion
+
+ERROR CASES TO TEST:
+--------------------
+1. Admin deleting themselves:
+   curl -X DELETE http://localhost:8080/api/admin/users/1 \
+     -H "Authorization: Bearer ADMIN_TOKEN_FOR_USER_1"
+   Expected: 400 Bad Request - "Admins cannot delete themselves"
+
+2. User already deleted (suspended):
+   curl -X DELETE http://localhost:8080/api/admin/users/15
+   Expected: 200 OK (idempotent - sets enabled=false again)
+
+3. Non-admin access:
+   Expected: 403 Forbidden
+
+4. User not found:
+   curl -X DELETE http://localhost:8080/api/admin/users/99999
+   Expected: 400 Bad Request - "User not found"
+
+================================================================================
+                    INTEGRATION & CROSS-MODULE TESTS
+================================================================================
+
+TEST 8: Suspension Impact on All Modules
+-----------------------------------------
+Verify suspended users cannot access any protected resources:
+
+1. Suspend tenant user
+2. Test tenant cannot:
+   - Create rental applications
+   - View own applications
+   - Make payments
+   - Access dashboard
+   - Update profile (debatable - may allow profile view)
+
+3. Suspend landlord user
+4. Test landlord cannot:
+   - Create properties
+   - Edit properties
+   - Approve/reject applications
+   - Access dashboard
+   - Confirm payments
+
+TEST 9: Role Change Impact on Properties
+-----------------------------------------
+1. Landlord with 5 properties changes to TENANT
+2. Verify:
+   - Properties still exist in database
+   - Properties not shown in landlord dashboard (403 Forbidden)
+   - Properties visible to other users (not deleted)
+   - Change back to LANDLORD → properties accessible again
+
+TEST 10: Role Change Impact on Applications
+--------------------------------------------
+1. Tenant with 3 applications changes to LANDLORD
+2. Verify:
+   - Applications still exist
+   - Applications not accessible as landlord
+   - Change back to TENANT → applications accessible
+
+TEST 11: Admin Cannot Self-Administrate
+----------------------------------------
+1. Admin attempts to suspend self → Fails
+2. Admin attempts to change own role → Fails
+3. Admin attempts to delete self → Fails
+4. Confirm safety mechanisms prevent admin lockout
+
+TEST 12: Multiple Admins
+-------------------------
+1. Admin A suspends Admin B → Success
+2. Admin B cannot login
+3. Admin A unsuspends Admin B → Success
+4. Admin B can login again
+
+TEST 13: User Aggregation Accuracy
+-----------------------------------
+Verify aggregation counts match actual data:
+
+1. Landlord with 5 properties:
+   SELECT COUNT(*) FROM properties WHERE landlord_id = ?
+   Compare with AdminUserDTO.propertyCount
+
+2. Tenant with 3 applications:
+   SELECT COUNT(*) FROM rental_applications WHERE tenant_id = ?
+   Compare with AdminUserDTO.applicationCount
+
+3. Active lease count:
+   SELECT COUNT(*) FROM leases WHERE tenant_id = ? AND status = 'ACTIVE'
+   Compare with AdminUserDTO.activeLeaseCount
+
+TEST 14: Suspended User Token Validation
+-----------------------------------------
+1. User logs in → gets JWT token
+2. Admin suspends user
+3. User tries to use old token:
+   - JWT is still valid (not expired)
+   - But Spring Security checks User.enabled
+   - Request should fail with 403 Forbidden
+
+TEST 15: Role Change Token Validation
+--------------------------------------
+1. Tenant logs in → gets JWT with role=TENANT
+2. Admin changes user to LANDLORD
+3. Tenant tries to access landlord endpoint with old token:
+   - JWT still says role=TENANT
+   - Should fail with 403 Forbidden
+4. Tenant logs in again → gets new JWT with role=LANDLORD
+5. Can now access landlord endpoints
+
+================================================================================
+                         EXPECTED BEHAVIORS
+================================================================================
+
+✓ All endpoints require ADMIN role
+✓ Non-admin users get 403 Forbidden
+✓ Admins cannot suspend/delete/change-role for themselves
+✓ User suspension impacts ALL modules immediately
+✓ Soft delete preserves user data
+✓ Role changes require re-login for JWT update
+✓ Aggregations calculated based on current role
+✓ Suspended users appear in suspended list
+✓ Empty results return [] not null
+✓ All operations logged with admin ID and reason
+
+================================================================================
+                         COMMON ISSUES & FIXES
+================================================================================
+
+ISSUE 1: Admin Locked Out
+--------------------------
+Cause: Only one admin suspended or deleted
+Fix: Always maintain multiple admin accounts
+Prevention: System blocks self-administration
+
+ISSUE 2: Role Change Not Taking Effect
+---------------------------------------
+Cause: Using old JWT token with old role
+Fix: User must login again to get token with new role
+Note: Old tokens remain valid until expiry
+
+ISSUE 3: Suspended User Still Accessing
+----------------------------------------
+Cause: JWT token cached or Spring Security not checking enabled flag
+Fix: Verify User.enabled check in UserDetailsService
+Solution: Ensure loadUserByUsername throws exception if !enabled
+
+ISSUE 4: Aggregations Wrong After Role Change
+----------------------------------------------
+Cause: Aggregations calculated based on new role immediately
+Fix: This is expected - old data still exists but shows counts for new role perspective
+
+ISSUE 5: Cannot Unsuspend User
+-------------------------------
+Cause: User trying to unsuspend without ADMIN role
+Fix: Only admins can unsuspend users
+
+ISSUE 6: User Data Lost After Delete
+-------------------------------------
+Cause: Expecting hard delete behavior
+Fix: Current implementation is soft delete - data preserved
+Note: enabled=false, user cannot login but data intact
+
+================================================================================
+                    AUTOMATED TEST SCRIPT (Bash)
+================================================================================
+
+#!/bin/bash
+# Save as: test-admin-api.sh
+
+BASE_URL="http://localhost:8080/api"
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo "======================================"
+echo "  Admin User Management API Tests"
+echo "======================================"
+
+# Login as admin
+echo -e "\nLogging in as admin..."
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"adminpass123"}')
+ADMIN_TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+if [ -z "$ADMIN_TOKEN" ]; then
+    echo -e "${RED}✗ FAIL${NC} - Admin login failed"
+    exit 1
+fi
+echo -e "${GREEN}✓ PASS${NC} - Admin login successful"
+
+# Test 1: Get All Users
+echo -e "\nTest 1: Get All Users..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/admin/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 2: Get Suspended Users
+echo -e "\nTest 2: Get Suspended Users..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/admin/users/suspended" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 3: Get User By ID
+echo -e "\nTest 3: Get User By ID..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/admin/users/1" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 4: Non-admin Access
+echo -e "\nTest 4: Non-admin Access (Should Fail)..."
+# Login as tenant
+TENANT_LOGIN=$(curl -s -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"tenant@test.com","password":"password123"}')
+TENANT_TOKEN=$(echo $TENANT_LOGIN | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/admin/users" \
+  -H "Authorization: Bearer $TENANT_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "403" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 403 (Expected)"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+echo -e "\n======================================"
+echo "  Tests Complete"
+echo "======================================"
+
+================================================================================
+                              NOTES
+================================================================================
+
+1. Always maintain at least 2 admin accounts to prevent lockout
+2. Test suspension impact across ALL modules
+3. Verify JWT token behavior after role changes
+4. Soft delete preserves data - hard delete requires cascade handling
+5. Aggregations calculated in real-time from database
+6. Admin cannot self-administrate (safety feature)
+7. Suspended users cannot login even with valid tokens
+8. Role changes require re-login for new JWT
+9. Empty results return [] not null
+10. All admin actions should be logged with reason
+
+================================================================================
+                          TEST DATA SETUP
+================================================================================
+
+Create comprehensive test users:
+
+1. Admin user (for testing)
+2. Landlord with 5 properties, 3 active leases
+3. Tenant with 5 applications, 2 active leases
+4. Suspended tenant
+5. Suspended landlord
+6. User to be suspended during testing
+7. User to have role changed during testing
+8. Multiple admins to test admin-admin interactions
+
+SQL script available in: tests/setup-admin-test-data.sql
+
+================================================================================
+                              END OF FILE
+================================================================================
