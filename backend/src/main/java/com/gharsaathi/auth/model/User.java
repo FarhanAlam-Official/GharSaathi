@@ -64,6 +64,22 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Boolean enabled = true;
 
+    // ===== Profile Fields =====
+    
+    @Column(length = 255)
+    private String profilePicture;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean emailVerified = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean phoneVerified = false;
+
+    @Column
+    private LocalDateTime lastLogin;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
