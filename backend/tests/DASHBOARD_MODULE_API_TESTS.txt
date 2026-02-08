@@ -1,0 +1,693 @@
+================================================================================
+                    DASHBOARD ANALYTICS MODULE - API TESTS
+================================================================================
+Module: Dashboard Analytics
+Endpoints: 3 (Tenant, Landlord, Admin)
+Base URL: http://localhost:8080/api/dashboard
+Authentication: Required (JWT Bearer Token)
+Status: ✅ Implemented & Compiled
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Backend server running on port 8080
+2. Database populated with test data (users, properties, leases, payments)
+3. Valid JWT tokens for each role (TENANT, LANDLORD, ADMIN)
+
+To get tokens, first login:
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"tenant@test.com","password":"password123"}'
+
+Save the token from response: "token": "eyJhbGc..."
+
+================================================================================
+                        TEST 1: TENANT DASHBOARD
+================================================================================
+
+Endpoint: GET /api/dashboard/tenant
+Description: Retrieve tenant-specific dashboard with applications, leases, and payments
+Role Required: TENANT
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/dashboard/tenant \
+  -H "Authorization: Bearer YOUR_TENANT_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE STRUCTURE:
+----------------------------
+{
+  "activeLeases": 2,
+  "totalApplications": 5,
+  "pendingApplications": 1,
+  "approvedApplications": 2,
+  "rejectedApplications": 1,
+  "upcomingPayments": 3,
+  "overduePayments": 0,
+  "savedProperties": 0,
+  "totalAmountPaid": 150000.00,
+  "totalAmountPending": 50000.00,
+  "totalAmountOverdue": 0.00,
+  "recentApplications": [
+    {
+      "id": 5,
+      "property": {
+        "id": 3,
+        "title": "Modern Apartment in City Center",
+        "address": "456 Main St",
+        "city": "Kathmandu",
+        "price": 25000.00,
+        "bedrooms": 2,
+        "bathrooms": 1
+      },
+      "tenant": {
+        "id": 1,
+        "fullName": "John Doe",
+        "email": "tenant@test.com",
+        "phoneNumber": "9812345678"
+      },
+      "status": "PENDING",
+      "message": "I am interested in this property",
+      "createdAt": "2026-01-25T10:30:00",
+      "updatedAt": "2026-01-25T10:30:00"
+    }
+  ],
+  "upcomingPaymentsList": [
+    {
+      "id": 10,
+      "lease": {
+        "id": 2,
+        "startDate": "2026-01-01",
+        "endDate": "2026-12-31"
+      },
+      "tenant": {
+        "id": 1,
+        "fullName": "John Doe",
+        "email": "tenant@test.com"
+      },
+      "landlord": {
+        "id": 5,
+        "fullName": "Jane Smith",
+        "email": "landlord@test.com"
+      },
+      "property": {
+        "id": 3,
+        "title": "Modern Apartment in City Center",
+        "address": "456 Main St"
+      },
+      "amount": 25000.00,
+      "dueDate": "2026-02-01",
+      "status": "PENDING",
+      "lateFee": 0.00,
+      "confirmedByLandlord": false
+    }
+  ],
+  "activeLeasesList": [
+    {
+      "id": 2,
+      "property": {
+        "id": 3,
+        "title": "Modern Apartment in City Center",
+        "address": "456 Main St",
+        "city": "Kathmandu"
+      },
+      "tenant": {
+        "id": 1,
+        "fullName": "John Doe",
+        "email": "tenant@test.com"
+      },
+      "landlord": {
+        "id": 5,
+        "fullName": "Jane Smith",
+        "email": "landlord@test.com"
+      },
+      "leaseStartDate": "2026-01-01",
+      "leaseEndDate": "2026-12-31",
+      "monthlyRent": 25000.00,
+      "securityDeposit": 50000.00,
+      "status": "ACTIVE",
+      "specialTerms": "No pets allowed"
+    }
+  ]
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Response contains all tenant statistics
+✓ activeLeases count matches actual active leases
+✓ totalApplications count is correct
+✓ Financial amounts (paid/pending/overdue) are accurate
+✓ recentApplications array contains max 5 items
+✓ upcomingPaymentsList shows payments due in next 30 days
+✓ activeLeasesList shows tenant's active leases
+✓ All nested objects (property, tenant, landlord) are populated
+
+ERROR CASES TO TEST:
+--------------------
+1. No token provided:
+   Expected: 401 Unauthorized
+
+2. Invalid/Expired token:
+   Expected: 401 Unauthorized
+
+3. Wrong role token (LANDLORD or ADMIN):
+   Expected: 403 Forbidden
+
+================================================================================
+                        TEST 2: LANDLORD DASHBOARD
+================================================================================
+
+Endpoint: GET /api/dashboard/landlord
+Description: Retrieve landlord business metrics, properties, revenue analytics
+Role Required: LANDLORD
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/dashboard/landlord \
+  -H "Authorization: Bearer YOUR_LANDLORD_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE STRUCTURE:
+----------------------------
+{
+  "totalProperties": 5,
+  "availableProperties": 2,
+  "rentedProperties": 3,
+  "underMaintenanceProperties": 0,
+  "activeLeases": 3,
+  "expiringLeases": 1,
+  "pendingApplications": 2,
+  "totalApplicationsThisMonth": 4,
+  "monthlyRentalIncome": 75000.00,
+  "expectedMonthlyIncome": 75000.00,
+  "totalRevenue": 450000.00,
+  "paymentCollectionRate": 95.5,
+  "topProperties": [
+    {
+      "id": 3,
+      "title": "Modern Apartment in City Center",
+      "propertyType": "APARTMENT",
+      "status": "RENTED",
+      "city": "Kathmandu",
+      "area": "Thamel",
+      "price": 25000.00,
+      "bedrooms": 2,
+      "bathrooms": 1,
+      "propertyArea": 850.0,
+      "furnished": true,
+      "primaryImageUrl": "/images/property-3-main.jpg",
+      "landlordId": 5,
+      "landlordName": "Jane Smith",
+      "landlordEmail": "landlord@test.com"
+    }
+  ],
+  "recentApplications": [
+    {
+      "id": 8,
+      "property": {
+        "id": 3,
+        "title": "Modern Apartment in City Center"
+      },
+      "tenant": {
+        "id": 2,
+        "fullName": "Alice Johnson",
+        "email": "alice@test.com",
+        "phoneNumber": "9823456789"
+      },
+      "status": "PENDING",
+      "message": "Looking for a long-term rental",
+      "createdAt": "2026-01-27T14:20:00"
+    }
+  ],
+  "expiringLeasesList": [
+    {
+      "id": 4,
+      "property": {
+        "id": 5,
+        "title": "Family House with Garden"
+      },
+      "tenant": {
+        "id": 3,
+        "fullName": "Bob Williams"
+      },
+      "leaseStartDate": "2025-03-01",
+      "leaseEndDate": "2026-02-28",
+      "monthlyRent": 30000.00,
+      "status": "ACTIVE"
+    }
+  ],
+  "revenueByProperty": {
+    "Modern Apartment in City Center": 150000.00,
+    "Family House with Garden": 180000.00,
+    "Cozy Studio Apartment": 90000.00,
+    "Spacious Villa": 225000.00,
+    "Downtown Office Space": 120000.00
+  },
+  "revenueByMonth": {
+    "2025-08": 60000.00,
+    "2025-09": 65000.00,
+    "2025-10": 70000.00,
+    "2025-11": 72000.00,
+    "2025-12": 75000.00,
+    "2026-01": 78000.00
+  }
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Property counts (total, available, rented, maintenance) are correct
+✓ Lease statistics (active, expiring) match database
+✓ Application counts are accurate
+✓ monthlyRentalIncome equals sum of all active lease rents
+✓ totalRevenue equals sum of all confirmed payments
+✓ paymentCollectionRate is between 0-100 and accurate
+✓ topProperties array limited to 5 items
+✓ recentApplications limited to 5 items
+✓ expiringLeasesList shows leases expiring in next 30 days
+✓ revenueByProperty map has correct totals per property
+✓ revenueByMonth map shows last 6 months in format "2026-01"
+
+BUSINESS LOGIC VALIDATION:
+--------------------------
+1. Monthly income calculation:
+   Sum of (monthlyRent from all ACTIVE leases) = monthlyRentalIncome
+
+2. Payment collection rate calculation:
+   (confirmedPayments / totalPayments) * 100 = paymentCollectionRate
+
+3. Revenue by property:
+   Sum of (amount from CONFIRMED payments for each property)
+
+4. Expiring leases criteria:
+   leaseEndDate BETWEEN today AND (today + 30 days) AND status = ACTIVE
+
+ERROR CASES TO TEST:
+--------------------
+1. No token provided:
+   Expected: 401 Unauthorized
+
+2. TENANT token used:
+   Expected: 403 Forbidden
+
+================================================================================
+                        TEST 3: ADMIN DASHBOARD
+================================================================================
+
+Endpoint: GET /api/dashboard/admin
+Description: Platform-wide statistics, growth metrics, top performers
+Role Required: ADMIN
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/dashboard/admin \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE STRUCTURE:
+----------------------------
+{
+  "totalUsers": 50,
+  "totalTenants": 30,
+  "totalLandlords": 18,
+  "totalAdmins": 2,
+  "newUsersThisMonth": 5,
+  "totalProperties": 25,
+  "availableProperties": 10,
+  "rentedProperties": 12,
+  "totalLeases": 40,
+  "activeLeases": 15,
+  "expiredLeases": 20,
+  "terminatedLeases": 5,
+  "totalPayments": 200,
+  "pendingPayments": 15,
+  "paidPayments": 50,
+  "confirmedPayments": 130,
+  "overduePayments": 5,
+  "platformRevenue": 3250000.00,
+  "monthlyRevenue": 325000.00,
+  "totalSecurityDeposits": 750000.00,
+  "totalApplications": 80,
+  "pendingApplications": 10,
+  "approvedApplications": 45,
+  "rejectedApplications": 25,
+  "userGrowth": {
+    "2025-02": 2,
+    "2025-03": 3,
+    "2025-04": 4,
+    "2025-05": 5,
+    "2025-06": 4,
+    "2025-07": 6,
+    "2025-08": 3,
+    "2025-09": 5,
+    "2025-10": 4,
+    "2025-11": 6,
+    "2025-12": 5,
+    "2026-01": 5
+  },
+  "revenueGrowth": {
+    "2025-02": 150000.00,
+    "2025-03": 180000.00,
+    "2025-04": 200000.00,
+    "2025-05": 220000.00,
+    "2025-06": 240000.00,
+    "2025-07": 260000.00,
+    "2025-08": 270000.00,
+    "2025-09": 280000.00,
+    "2025-10": 290000.00,
+    "2025-11": 300000.00,
+    "2025-12": 310000.00,
+    "2026-01": 325000.00
+  },
+  "topProperties": [
+    {
+      "id": 3,
+      "title": "Modern Apartment in City Center",
+      "city": "Kathmandu",
+      "price": 25000.00,
+      "bedrooms": 2,
+      "status": "RENTED"
+    },
+    {
+      "id": 5,
+      "title": "Luxury Penthouse",
+      "city": "Lalitpur",
+      "price": 50000.00,
+      "bedrooms": 3,
+      "status": "RENTED"
+    }
+  ],
+  "topLandlords": [
+    {
+      "landlordId": 5,
+      "landlordName": "Jane Smith",
+      "landlordEmail": "landlord@test.com",
+      "propertiesCount": 5,
+      "totalRevenue": 850000.00
+    },
+    {
+      "landlordId": 7,
+      "landlordName": "Michael Brown",
+      "landlordEmail": "michael@test.com",
+      "propertiesCount": 4,
+      "totalRevenue": 720000.00
+    }
+  ]
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ User counts by role sum to totalUsers
+✓ Property status counts are accurate
+✓ Lease status counts sum correctly
+✓ Payment status counts match database
+✓ Application status counts are correct
+✓ platformRevenue = sum of all CONFIRMED payments
+✓ monthlyRevenue = sum of CONFIRMED payments in current month
+✓ totalSecurityDeposits = sum of securityDeposit from ACTIVE leases
+✓ userGrowth map shows last 12 months
+✓ revenueGrowth map shows last 12 months
+✓ topProperties limited to 10, sorted by application count (descending)
+✓ topLandlords limited to 10, sorted by revenue (descending)
+✓ All monetary values use BigDecimal with 2 decimal places
+✓ Month keys in format "YYYY-MM"
+
+PLATFORM-WIDE VALIDATION:
+-------------------------
+1. User distribution check:
+   totalUsers = totalTenants + totalLandlords + totalAdmins
+
+2. Property status distribution:
+   totalProperties >= (availableProperties + rentedProperties)
+   Note: Some may be MAINTENANCE or UNAVAILABLE
+
+3. Revenue consistency:
+   platformRevenue = sum(revenueGrowth values for all months)
+
+4. Growth metrics validation:
+   - userGrowth: count of users where createdAt in each month
+   - revenueGrowth: sum of CONFIRMED payment amounts in each month
+
+5. Top performers criteria:
+   - topProperties: Sorted by rental application count (most popular)
+   - topLandlords: Sorted by total confirmed payment revenue
+
+ERROR CASES TO TEST:
+--------------------
+1. No token provided:
+   Expected: 401 Unauthorized
+
+2. TENANT or LANDLORD token used:
+   Expected: 403 Forbidden
+
+3. Non-admin user attempting access:
+   Expected: 403 Forbidden
+
+================================================================================
+                    INTEGRATION & CROSS-MODULE TESTS
+================================================================================
+
+TEST 4: Dashboard Data Consistency
+------------------------------------
+Verify dashboard statistics match actual database records
+
+1. Create new application → Check tenant & landlord dashboards update
+2. Approve application & create lease → Verify lease counts increment
+3. Generate payment → Check upcoming payments appear
+4. Mark payment as CONFIRMED → Verify revenue totals update
+5. Expire lease → Check active lease count decrements
+
+TEST 5: Real-time Data Accuracy
+--------------------------------
+1. Add new property → Landlord dashboard totalProperties increments
+2. Change property status to MAINTENANCE → underMaintenanceProperties updates
+3. Create overdue payment → overduePayments count increases
+4. User registration → Admin dashboard newUsersThisMonth increments
+
+TEST 6: Financial Calculations
+-------------------------------
+Compare dashboard financial data with manual calculations:
+
+1. Monthly Rental Income:
+   SELECT SUM(monthly_rent) FROM leases WHERE status = 'ACTIVE' AND landlord_id = ?
+
+2. Total Platform Revenue:
+   SELECT SUM(amount) FROM payments WHERE status = 'CONFIRMED'
+
+3. Payment Collection Rate:
+   (SELECT COUNT(*) FROM payments WHERE status = 'CONFIRMED' AND landlord_id = ?) / 
+   (SELECT COUNT(*) FROM payments WHERE landlord_id = ?) * 100
+
+TEST 7: Date Range Filtering
+-----------------------------
+1. Verify "expiringLeases" only shows leases ending in next 30 days
+2. Verify "upcomingPayments" only shows payments due in next 30 days
+3. Verify "userGrowth" shows exactly last 12 months
+4. Verify "revenueGrowth" shows exactly last 6 months (landlord) or 12 months (admin)
+
+TEST 8: Authorization Matrix
+-----------------------------
+Test all combinations of role and endpoint:
+
+| Endpoint              | TENANT | LANDLORD | ADMIN |
+|-----------------------|--------|----------|-------|
+| /dashboard/tenant     | ✓ 200  | ✗ 403    | ✗ 403 |
+| /dashboard/landlord   | ✗ 403  | ✓ 200    | ✗ 403 |
+| /dashboard/admin      | ✗ 403  | ✗ 403    | ✓ 200 |
+
+TEST 9: Empty Data Scenarios
+-----------------------------
+1. New tenant with no applications → All counts should be 0
+2. New landlord with no properties → Empty arrays and 0 values
+3. No payments this month → monthlyRevenue = 0.00
+4. No active leases → monthlyRentalIncome = 0.00
+
+TEST 10: Performance Testing
+-----------------------------
+1. Load test with 100 concurrent requests per endpoint
+2. Measure response time (should be < 500ms)
+3. Verify no N+1 query problems
+4. Check database connection pool usage
+
+================================================================================
+                         EXPECTED BEHAVIORS
+================================================================================
+
+✓ All endpoints require authentication (JWT token)
+✓ Role-based access control enforced via @PreAuthorize
+✓ All operations are READ-ONLY (no data modifications)
+✓ Statistics are calculated in real-time from database
+✓ Recent activity lists limited to 5 items
+✓ Top performers lists limited to 10 items
+✓ All monetary values in BigDecimal with 2 decimal places
+✓ Date formats: ISO 8601 for timestamps, LocalDate for dates
+✓ Revenue maps use String keys in "YYYY-MM" format
+✓ Empty collections return [] not null
+✓ Missing optional fields return null
+✓ All responses have proper HTTP status codes
+✓ Error responses include meaningful messages
+
+================================================================================
+                         COMMON ISSUES & FIXES
+================================================================================
+
+ISSUE 1: 401 Unauthorized
+--------------------------
+Cause: Missing or invalid JWT token
+Fix: Obtain fresh token via /api/auth/login
+
+ISSUE 2: 403 Forbidden
+----------------------
+Cause: Wrong role attempting to access endpoint
+Fix: Use token with correct role (TENANT/LANDLORD/ADMIN)
+
+ISSUE 3: Empty Arrays in Response
+----------------------------------
+Cause: No data for user (new account, no activity)
+Fix: Expected behavior - create test data first
+
+ISSUE 4: Incorrect Financial Totals
+------------------------------------
+Cause: Payments not marked as CONFIRMED
+Fix: Use two-step payment confirmation (PENDING → PAID → CONFIRMED)
+
+ISSUE 5: Missing Recent Activities
+-----------------------------------
+Cause: No activity in last few days/weeks
+Fix: Create recent applications, payments, or leases
+
+ISSUE 6: Zero Payment Collection Rate
+--------------------------------------
+Cause: No confirmed payments yet
+Fix: Normal for new landlords - process some payments
+
+ISSUE 7: Empty Revenue Maps
+----------------------------
+Cause: No payment history in past months
+Fix: Backdate some payment records for testing
+
+================================================================================
+                    AUTOMATED TEST SCRIPT (Bash)
+================================================================================
+
+#!/bin/bash
+# Save as: test-dashboard-api.sh
+
+BASE_URL="http://localhost:8080/api"
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo "======================================"
+echo "  Dashboard API Automated Tests"
+echo "======================================"
+
+# Test 1: Tenant Dashboard
+echo -e "\nTest 1: Tenant Dashboard..."
+TENANT_TOKEN="YOUR_TENANT_JWT_TOKEN"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/dashboard/tenant" \
+  -H "Authorization: Bearer $TENANT_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 2: Landlord Dashboard
+echo -e "\nTest 2: Landlord Dashboard..."
+LANDLORD_TOKEN="YOUR_LANDLORD_JWT_TOKEN"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/dashboard/landlord" \
+  -H "Authorization: Bearer $LANDLORD_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 3: Admin Dashboard
+echo -e "\nTest 3: Admin Dashboard..."
+ADMIN_TOKEN="YOUR_ADMIN_JWT_TOKEN"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/dashboard/admin" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 4: Unauthorized Access
+echo -e "\nTest 4: Unauthorized Access..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/dashboard/tenant")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "401" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 401 (Expected)"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 5: Wrong Role Access
+echo -e "\nTest 5: Wrong Role (Tenant accessing Admin)..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/dashboard/admin" \
+  -H "Authorization: Bearer $TENANT_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "403" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 403 (Expected)"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+echo -e "\n======================================"
+echo "  Tests Complete"
+echo "======================================"
+
+================================================================================
+                              NOTES
+================================================================================
+
+1. Replace YOUR_*_JWT_TOKEN with actual tokens obtained from login
+2. Ensure database has sufficient test data for meaningful results
+3. Test in order: tenant → landlord → admin (increasing complexity)
+4. Verify response JSON structure matches expected format
+5. Check logs for any errors or warnings during execution
+6. Use jq tool to pretty-print JSON: curl ... | jq .
+7. For production testing, use staging environment first
+8. Monitor database query performance during tests
+9. Validate all date/time fields are in correct timezone
+10. Test with both empty and populated datasets
+
+================================================================================
+                          TEST DATA SETUP
+================================================================================
+
+To create comprehensive test data for dashboard testing:
+
+1. Create users (3 tenants, 2 landlords, 1 admin)
+2. Create 5 properties across both landlords
+3. Create 10 rental applications (various statuses)
+4. Approve 5 applications and auto-create leases
+5. Generate payments for all active leases
+6. Mark some payments as PAID and CONFIRMED
+7. Create some overdue payments (past due date)
+8. Set some lease end dates within 30 days
+9. Backdate some payments to previous months for revenue history
+10. Verify all relationships (property → landlord, lease → tenant, etc.)
+
+SQL script available in: tests/setup-dashboard-test-data.sql
+
+================================================================================
+                              END OF FILE
+================================================================================
