@@ -49,6 +49,21 @@ public class SecurityConfig {
                         // Public property endpoints (browse and search) - MUST be before role-based rules
                         .requestMatchers("/api/properties/**").permitAll()
                         
+                        // Dashboard endpoints - requires authentication, role checked at method level
+                        .requestMatchers("/api/dashboard/**").authenticated()
+                        
+                        // User profile endpoints - requires authentication
+                        .requestMatchers("/api/users/profile/**").authenticated()
+                        
+                        // File upload endpoints - requires authentication
+                        .requestMatchers("/api/files/**").authenticated()
+                        
+                        // Notification endpoints - requires authentication
+                        .requestMatchers("/api/notifications/**").authenticated()
+                        
+                        // Review endpoints - requires authentication
+                        .requestMatchers("/api/reviews/**").authenticated()
+                        
                         // Role-based endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/landlord/**").hasRole("LANDLORD")
