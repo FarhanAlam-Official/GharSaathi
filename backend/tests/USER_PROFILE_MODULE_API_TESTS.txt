@@ -1,0 +1,955 @@
+================================================================================
+                  USER PROFILE MANAGEMENT MODULE - API TESTS
+================================================================================
+Module: User Profile Management
+Endpoints: 5 (Get Profile, Update Profile, Change Password, Verify Email, Verify Phone)
+Base URL: http://localhost:8080/api/users/profile
+Authentication: Required (JWT Bearer Token)
+Status: ✅ Implemented & Compiled
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Backend server running on port 8080
+2. Database with users table updated (4 new profile fields)
+3. Valid JWT tokens for testing (TENANT, LANDLORD, or ADMIN)
+
+To get token, login first:
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@test.com","password":"password123"}'
+
+Save the token from response: "token": "eyJhbGc..."
+
+================================================================================
+                        TEST 1: GET USER PROFILE
+================================================================================
+
+Endpoint: GET /api/users/profile
+Description: Retrieve current authenticated user's profile information
+Role Required: ANY authenticated user
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X GET http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Doe",
+  "email": "john.doe@test.com",
+  "phoneNumber": "9812345678",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-15T10:30:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Response contains all user profile fields
+✓ id matches authenticated user
+✓ email matches JWT token email
+✓ role is one of: TENANT, LANDLORD, ADMIN
+✓ enabled is boolean
+✓ emailVerified is boolean (false by default)
+✓ phoneVerified is boolean (false by default)
+✓ profilePicture is null or valid URL string
+✓ lastLogin is null or valid ISO 8601 timestamp
+✓ createdAt and updatedAt are valid timestamps
+
+NEW PROFILE FIELDS:
+-------------------
+1. profilePicture (String, nullable) - URL to profile picture
+2. emailVerified (Boolean, default: false) - Email verification status
+3. phoneVerified (Boolean, default: false) - Phone verification status
+4. lastLogin (LocalDateTime, nullable) - Last login timestamp
+
+ERROR CASES TO TEST:
+--------------------
+1. No token provided:
+   curl -X GET http://localhost:8080/api/users/profile
+   Expected: 401 Unauthorized
+
+2. Invalid/Expired token:
+   curl -X GET http://localhost:8080/api/users/profile \
+     -H "Authorization: Bearer INVALID_TOKEN"
+   Expected: 401 Unauthorized
+
+3. Malformed Authorization header:
+   curl -X GET http://localhost:8080/api/users/profile \
+     -H "Authorization: InvalidFormat"
+   Expected: 401 Unauthorized
+
+================================================================================
+                        TEST 2: UPDATE USER PROFILE
+================================================================================
+
+Endpoint: PUT /api/users/profile
+Description: Update current user's profile information (name, email, phone, picture)
+Role Required: ANY authenticated user
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST (Update Full Name):
+---------------------------
+curl -X PUT http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "John Smith"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Smith",
+  "email": "john.doe@test.com",
+  "phoneNumber": "9812345678",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T14:52:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ fullName updated to "John Smith"
+✓ updatedAt timestamp changed
+✓ createdAt timestamp unchanged
+✓ All other fields remain unchanged
+
+--------------------------------------------------------------------------------
+REQUEST (Update Email):
+-----------------------
+curl -X PUT http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.smith@test.com"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9812345678",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T14:53:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ email updated to new address
+✓ emailVerified reset to false (email changed)
+✓ updatedAt timestamp changed
+✓ User must login again with new email for JWT to reflect change
+
+IMPORTANT EMAIL CHANGE BEHAVIOR:
+---------------------------------
+- When email changes, emailVerified is reset to false
+- Current JWT token remains valid until expiry
+- User should login with new email to get updated token
+- Email uniqueness is enforced (cannot use existing email)
+
+--------------------------------------------------------------------------------
+REQUEST (Update Phone Number):
+------------------------------
+curl -X PUT http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "9823456789"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9823456789",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": null,
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T14:54:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ phoneNumber updated
+✓ phoneVerified reset to false (phone changed)
+✓ updatedAt timestamp changed
+
+--------------------------------------------------------------------------------
+REQUEST (Update Profile Picture):
+----------------------------------
+curl -X PUT http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profilePicture": "https://example.com/profiles/john-smith.jpg"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9823456789",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": "https://example.com/profiles/john-smith.jpg",
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T14:55:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ profilePicture updated to new URL
+✓ updatedAt timestamp changed
+✓ All other fields unchanged
+
+--------------------------------------------------------------------------------
+REQUEST (Update Multiple Fields):
+----------------------------------
+curl -X PUT http://localhost:8080/api/users/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "John Michael Smith",
+    "phoneNumber": "9834567890",
+    "profilePicture": "https://cdn.example.com/profiles/jms.jpg"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Michael Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9834567890",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": "https://cdn.example.com/profiles/jms.jpg",
+  "emailVerified": false,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T14:56:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ All provided fields updated
+✓ phoneVerified reset to false (phone changed)
+✓ Only one updatedAt timestamp update (atomic operation)
+
+ERROR CASES TO TEST:
+--------------------
+1. Empty full name:
+   {"fullName": ""}
+   Expected: 400 Bad Request - "Full name must be between 2 and 100 characters"
+
+2. Full name too short:
+   {"fullName": "A"}
+   Expected: 400 Bad Request - "Full name must be between 2 and 100 characters"
+
+3. Full name too long:
+   {"fullName": "A very long name exceeding 100 characters..."}
+   Expected: 400 Bad Request - "Full name must be between 2 and 100 characters"
+
+4. Invalid email format:
+   {"email": "not-an-email"}
+   Expected: 400 Bad Request - "Invalid email format"
+
+5. Email already exists:
+   {"email": "existing@test.com"}
+   Expected: 400 Bad Request - "Email is already in use: existing@test.com"
+
+6. Phone number too short:
+   {"phoneNumber": "123"}
+   Expected: 400 Bad Request - "Phone number must be between 10 and 15 characters"
+
+7. Profile picture URL too long:
+   {"profilePicture": "https://example.com/very/long/url/..." (> 255 chars)}
+   Expected: 400 Bad Request - "Profile picture URL must not exceed 255 characters"
+
+8. No authentication token:
+   Expected: 401 Unauthorized
+
+PARTIAL UPDATE BEHAVIOR:
+-------------------------
+- All fields are optional in UpdateProfileRequest
+- Only provided fields are updated
+- Empty string for phoneNumber removes phone (sets to null)
+- Empty string for profilePicture removes picture (sets to null)
+- Null values are ignored (field not updated)
+- Whitespace is trimmed from all string fields
+
+================================================================================
+                        TEST 3: CHANGE PASSWORD
+================================================================================
+
+Endpoint: PATCH /api/users/profile/password
+Description: Change current user's password with validation
+Role Required: ANY authenticated user
+Expected Status: 200 OK
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X PATCH http://localhost:8080/api/users/profile/password \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "password123",
+    "newPassword": "newSecurePass456",
+    "confirmPassword": "newSecurePass456"
+  }'
+
+EXPECTED RESPONSE:
+------------------
+"Password changed successfully"
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ Response message confirms success
+✓ updatedAt timestamp in database updated
+✓ Old password no longer works
+✓ New password works for login
+✓ Current JWT token remains valid until expiry
+
+PASSWORD CHANGE VALIDATION RULES:
+----------------------------------
+1. currentPassword must match user's existing password
+2. newPassword must be at least 6 characters
+3. newPassword must match confirmPassword
+4. newPassword must be different from currentPassword
+5. All fields are required (cannot be blank)
+
+ERROR CASES TO TEST:
+--------------------
+1. Current password incorrect:
+   {
+     "currentPassword": "wrongPassword",
+     "newPassword": "newSecurePass456",
+     "confirmPassword": "newSecurePass456"
+   }
+   Expected: 400 Bad Request - "Current password is incorrect"
+
+2. New password too short:
+   {
+     "currentPassword": "password123",
+     "newPassword": "12345",
+     "confirmPassword": "12345"
+   }
+   Expected: 400 Bad Request - "New password must be at least 6 characters"
+
+3. New password and confirmation don't match:
+   {
+     "currentPassword": "password123",
+     "newPassword": "newSecurePass456",
+     "confirmPassword": "differentPassword"
+   }
+   Expected: 400 Bad Request - "New password and confirmation do not match"
+
+4. New password same as current:
+   {
+     "currentPassword": "password123",
+     "newPassword": "password123",
+     "confirmPassword": "password123"
+   }
+   Expected: 400 Bad Request - "New password must be different from current password"
+
+5. Missing current password:
+   {
+     "newPassword": "newSecurePass456",
+     "confirmPassword": "newSecurePass456"
+   }
+   Expected: 400 Bad Request - "Current password is required"
+
+6. Missing new password:
+   {
+     "currentPassword": "password123",
+     "confirmPassword": "newSecurePass456"
+   }
+   Expected: 400 Bad Request - "New password is required"
+
+7. Missing confirmation:
+   {
+     "currentPassword": "password123",
+     "newPassword": "newSecurePass456"
+   }
+   Expected: 400 Bad Request - "Confirm password is required"
+
+8. Empty fields:
+   {
+     "currentPassword": "",
+     "newPassword": "",
+     "confirmPassword": ""
+   }
+   Expected: 400 Bad Request - Multiple validation errors
+
+SECURITY BEHAVIOR:
+------------------
+- Password hashed using BCrypt with strength 12
+- Old password never exposed in response
+- Failed attempts logged but no account lockout (for this version)
+- Current session (JWT) remains valid after password change
+- User should be advised to logout and login again with new password
+- No password history enforcement (can reuse old passwords)
+
+POST-PASSWORD-CHANGE TESTING:
+------------------------------
+1. Try logging in with old password:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"user@test.com","password":"password123"}'
+   Expected: 401 Unauthorized - "Invalid email or password"
+
+2. Login with new password:
+   curl -X POST http://localhost:8080/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"user@test.com","password":"newSecurePass456"}'
+   Expected: 200 OK with new JWT token
+
+3. Verify old JWT still works (until expiry):
+   curl -X GET http://localhost:8080/api/users/profile \
+     -H "Authorization: Bearer OLD_JWT_TOKEN"
+   Expected: 200 OK (token still valid)
+
+================================================================================
+                        TEST 4: VERIFY EMAIL
+================================================================================
+
+Endpoint: PATCH /api/users/profile/verify-email
+Description: Mark user's email as verified
+Role Required: ANY authenticated user
+Expected Status: 200 OK
+
+NOTE: In production, this would be called after clicking verification link sent to email
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X PATCH http://localhost:8080/api/users/profile/verify-email \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Michael Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9834567890",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": "https://cdn.example.com/profiles/jms.jpg",
+  "emailVerified": true,
+  "phoneVerified": false,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T15:00:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ emailVerified changed from false to true
+✓ updatedAt timestamp changed
+✓ All other fields unchanged
+
+ERROR CASES TO TEST:
+--------------------
+1. No authentication token:
+   Expected: 401 Unauthorized
+
+2. Already verified email:
+   Expected: 200 OK (idempotent - no error, still returns true)
+
+TYPICAL WORKFLOW:
+-----------------
+1. User registers → emailVerified = false
+2. System sends verification email with token
+3. User clicks link → calls this endpoint with verification token
+4. emailVerified set to true
+5. User can now access email-verified-only features
+
+FUTURE ENHANCEMENT:
+-------------------
+- Add email verification token parameter
+- Validate token before setting emailVerified
+- Add token expiry (e.g., 24 hours)
+- Send confirmation email after verification
+
+================================================================================
+                        TEST 5: VERIFY PHONE
+================================================================================
+
+Endpoint: PATCH /api/users/profile/verify-phone
+Description: Mark user's phone as verified
+Role Required: ANY authenticated user
+Expected Status: 200 OK
+
+NOTE: In production, this would be called after OTP verification
+
+--------------------------------------------------------------------------------
+REQUEST:
+--------
+curl -X PATCH http://localhost:8080/api/users/profile/verify-phone \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+
+EXPECTED RESPONSE:
+------------------
+{
+  "id": 1,
+  "fullName": "John Michael Smith",
+  "email": "john.smith@test.com",
+  "phoneNumber": "9834567890",
+  "role": "TENANT",
+  "enabled": true,
+  "profilePicture": "https://cdn.example.com/profiles/jms.jpg",
+  "emailVerified": true,
+  "phoneVerified": true,
+  "lastLogin": null,
+  "createdAt": "2026-01-15T10:30:00",
+  "updatedAt": "2026-01-28T15:01:00"
+}
+
+VALIDATION CHECKS:
+------------------
+✓ Status code is 200
+✓ phoneVerified changed from false to true
+✓ updatedAt timestamp changed
+✓ All other fields unchanged
+
+ERROR CASES TO TEST:
+--------------------
+1. No authentication token:
+   Expected: 401 Unauthorized
+
+2. No phone number set:
+   Expected: 200 OK (phoneVerified = true even if phone is null)
+   Note: In production, should validate phone exists before verifying
+
+3. Already verified phone:
+   Expected: 200 OK (idempotent - no error, still returns true)
+
+TYPICAL WORKFLOW:
+-----------------
+1. User adds phone number → phoneVerified = false
+2. System sends OTP to phone
+3. User enters OTP → backend validates
+4. If valid, calls this endpoint
+5. phoneVerified set to true
+6. User can now access phone-verified-only features
+
+FUTURE ENHANCEMENT:
+-------------------
+- Add OTP parameter to request
+- Validate OTP before setting phoneVerified
+- Add OTP expiry (e.g., 5 minutes)
+- Rate limit OTP requests (prevent spam)
+- Require phone number to be non-null before verification
+
+================================================================================
+                    INTEGRATION & CROSS-MODULE TESTS
+================================================================================
+
+TEST 6: Profile Update Impact on Authentication
+------------------------------------------------
+Test that profile changes affect authentication correctly:
+
+1. Update email → Login with old email fails
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"old@test.com","password":"password123"}'
+   Expected: 401 Unauthorized
+
+2. Login with new email succeeds
+   curl -X POST http://localhost:8080/api/auth/login \
+     -d '{"email":"new@test.com","password":"password123"}'
+   Expected: 200 OK
+
+3. Old JWT contains old email → but remains valid
+   Decode JWT: payload.sub = "old@test.com"
+   Use for API call: Still works until expiry
+
+TEST 7: Profile Fields in Other Modules
+----------------------------------------
+Verify profile changes appear in other modules:
+
+1. Update tenant profile picture
+2. Create rental application
+3. Check application response → tenant.profilePicture should be null (not exposed in ApplicationResponse)
+4. Note: Profile picture NOT exposed in existing DTOs for privacy
+
+5. Update landlord full name
+6. Check property listing → landlordName should show new name
+
+TEST 8: Verification Status Impact
+-----------------------------------
+Test verification flags (future feature preparation):
+
+1. emailVerified = false → User can still access all current features
+2. phoneVerified = false → User can still access all current features
+3. Note: Verification flags don't restrict access yet
+4. Future: Some features may require emailVerified = true
+
+TEST 9: Profile Update Validation
+----------------------------------
+Test all validation rules work correctly:
+
+1. Full name validation:
+   - Minimum 2 characters ✓
+   - Maximum 100 characters ✓
+   - Trim whitespace ✓
+
+2. Email validation:
+   - Valid email format ✓
+   - Unique email (no duplicates) ✓
+   - Trim whitespace ✓
+
+3. Phone validation:
+   - Minimum 10 characters ✓
+   - Maximum 15 characters ✓
+   - Can be set to null (empty string) ✓
+
+4. Profile picture validation:
+   - Maximum 255 characters ✓
+   - Can be set to null ✓
+
+TEST 10: Concurrent Profile Updates
+------------------------------------
+Test race conditions:
+
+1. User A updates profile → Request 1
+2. User A updates profile again → Request 2 (before Request 1 completes)
+3. Both requests should succeed
+4. Final state should reflect last completed request
+5. updatedAt should reflect final update
+
+TEST 11: Password Change Security
+----------------------------------
+Test password change security:
+
+1. Wrong current password → Fails (no change)
+2. Weak new password (< 6 chars) → Fails
+3. Reused password (same as current) → Fails
+4. Mismatched confirmation → Fails
+5. All valid → Success + BCrypt hash changes
+
+TEST 12: Profile Integrity After Updates
+-----------------------------------------
+1. Update profile multiple times
+2. Verify createdAt never changes
+3. Verify updatedAt always changes
+4. Verify id never changes
+5. Verify role never changes (not updateable via profile)
+6. Verify enabled status unchanged (admin only)
+
+TEST 13: Unauthorized Profile Access
+-------------------------------------
+Test users can only access their own profile:
+
+1. User A gets JWT token (id = 1)
+2. User A calls GET /api/users/profile
+3. Response contains id = 1 (correct)
+4. User cannot specify different user id in request
+5. Note: No endpoint exists for accessing other users' profiles
+6. Future: Admin module will have /api/admin/users/{id}/profile
+
+TEST 14: Email Uniqueness Enforcement
+--------------------------------------
+1. User A: email = "alice@test.com"
+2. User B: email = "bob@test.com"
+3. User B tries to update email to "alice@test.com"
+4. Expected: 400 Bad Request - "Email is already in use"
+5. Database constraint prevents duplicate emails
+
+TEST 15: Profile Picture URL Handling
+--------------------------------------
+Test various profile picture scenarios:
+
+1. Set valid URL → Success
+2. Set very long URL (> 255 chars) → Fails
+3. Set empty string → Removes picture (null)
+4. Set null → No change (field not updated)
+5. Set relative URL → Success (no validation, just storage)
+6. Note: No file upload in this module (File Upload module handles that)
+
+================================================================================
+                         EXPECTED BEHAVIORS
+================================================================================
+
+✓ All endpoints require authentication (JWT token)
+✓ Users can only access/modify their own profile
+✓ Email changes reset emailVerified to false
+✓ Phone changes reset phoneVerified to false
+✓ Password changes require current password validation
+✓ Partial updates supported (only provided fields updated)
+✓ Empty strings for optional fields remove the value (null)
+✓ All string inputs are trimmed
+✓ Email uniqueness enforced across all users
+✓ updatedAt timestamp always changes on updates
+✓ createdAt timestamp never changes
+✓ Role, enabled, id fields are NOT updateable via profile endpoints
+✓ Current JWT remains valid after profile changes
+✓ New login required to get JWT with updated email
+
+================================================================================
+                         DATABASE SCHEMA CHANGES
+================================================================================
+
+NEW COLUMNS IN USERS TABLE:
+----------------------------
+1. profile_picture VARCHAR(255) NULL
+   - Stores URL to profile picture
+   - Nullable (users may not have picture)
+   - Default: NULL
+
+2. email_verified TINYINT(1) NOT NULL DEFAULT 0
+   - Boolean flag for email verification
+   - Non-nullable with default false
+   - Set to true after email verification link clicked
+
+3. phone_verified TINYINT(1) NOT NULL DEFAULT 0
+   - Boolean flag for phone verification
+   - Non-nullable with default false
+   - Set to true after OTP verification
+
+4. last_login DATETIME(6) NULL
+   - Timestamp of user's last successful login
+   - Nullable (null for users who never logged in)
+   - Updated by AuthService on successful login (future enhancement)
+
+MIGRATION STRATEGY:
+-------------------
+Using spring.jpa.hibernate.ddl-auto=update:
+- Columns added automatically on first startup
+- Existing users get default values (false for booleans, null for others)
+- No manual SQL migration script required
+- Safe for production (additive changes only)
+
+BACKWARD COMPATIBILITY:
+-----------------------
+✓ Existing authentication still works
+✓ Existing API endpoints unchanged
+✓ New fields optional in all scenarios
+✓ Old user records function normally with default values
+
+================================================================================
+                         COMMON ISSUES & FIXES
+================================================================================
+
+ISSUE 1: 401 Unauthorized
+--------------------------
+Cause: Missing or invalid JWT token
+Fix: Login to get fresh token via /api/auth/login
+
+ISSUE 2: Email Already Exists
+------------------------------
+Cause: Trying to change email to one already in use
+Fix: Choose different email or check for typos
+
+ISSUE 3: Password Change Fails
+-------------------------------
+Cause: Current password incorrect
+Fix: Verify current password or use forgot password flow
+
+ISSUE 4: Validation Errors
+---------------------------
+Cause: Input data doesn't meet validation rules
+Fix: Check error message for specific field and rule violated
+
+ISSUE 5: Profile Not Found
+---------------------------
+Cause: User deleted or JWT contains invalid user ID
+Fix: Re-register or contact admin
+
+ISSUE 6: updatedAt Not Changing
+--------------------------------
+Cause: No actual changes made (same values)
+Fix: JPA @PreUpdate only triggers on actual field changes
+
+ISSUE 7: Email Changed But Still Using Old
+-------------------------------------------
+Cause: JWT contains old email, need new login
+Fix: Login with new email to get updated JWT token
+
+================================================================================
+                    AUTOMATED TEST SCRIPT (Bash)
+================================================================================
+
+#!/bin/bash
+# Save as: test-profile-api.sh
+
+BASE_URL="http://localhost:8080/api"
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo "======================================"
+echo "  Profile API Automated Tests"
+echo "======================================"
+
+# Login to get token
+echo -e "\nLogging in..."
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"tenant@test.com","password":"password123"}')
+TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+if [ -z "$TOKEN" ]; then
+    echo -e "${RED}✗ FAIL${NC} - Login failed"
+    exit 1
+fi
+echo -e "${GREEN}✓ PASS${NC} - Login successful"
+
+# Test 1: Get Profile
+echo -e "\nTest 1: Get Profile..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/users/profile" \
+  -H "Authorization: Bearer $TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 2: Update Profile
+echo -e "\nTest 2: Update Profile..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/users/profile" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Updated Name"}')
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 3: Change Password
+echo -e "\nTest 3: Change Password..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/users/profile/password" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"currentPassword":"password123","newPassword":"newpass456","confirmPassword":"newpass456"}')
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 4: Verify Email
+echo -e "\nTest 4: Verify Email..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/users/profile/verify-email" \
+  -H "Authorization: Bearer $TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 5: Verify Phone
+echo -e "\nTest 5: Verify Phone..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/users/profile/verify-phone" \
+  -H "Authorization: Bearer $TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 200"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+# Test 6: Unauthorized Access
+echo -e "\nTest 6: Unauthorized Access..."
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/users/profile")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+if [ "$HTTP_CODE" = "401" ]; then
+    echo -e "${GREEN}✓ PASS${NC} - Status 401 (Expected)"
+else
+    echo -e "${RED}✗ FAIL${NC} - Status $HTTP_CODE"
+fi
+
+echo -e "\n======================================"
+echo "  Tests Complete"
+echo "======================================"
+
+================================================================================
+                              NOTES
+================================================================================
+
+1. Replace YOUR_JWT_TOKEN with actual token from login
+2. Test profile updates before password changes (password change test changes password)
+3. After password change test, reset password back to original for subsequent tests
+4. Verification endpoints are stubs (no actual email/SMS sent yet)
+5. Profile picture uses URL strings (actual file upload in File Upload module)
+6. Users can only access their own profile (no admin access in this module)
+7. Role changes handled in Admin User Management module
+8. Account suspension handled in Admin User Management module
+9. lastLogin field populated by future AuthService enhancement
+10. Email/Phone verification workflows to be completed in future sprints
+
+================================================================================
+                          TEST DATA SETUP
+================================================================================
+
+Create test users with various profile states:
+
+1. Tenant with complete profile (all fields filled)
+2. Landlord with minimal profile (only required fields)
+3. Admin with verified email and phone
+4. Tenant with profile picture
+5. Landlord with unverified email
+6. User with recent lastLogin timestamp
+
+SQL setup available in: tests/setup-profile-test-data.sql
+
+================================================================================
+                              END OF FILE
+================================================================================
