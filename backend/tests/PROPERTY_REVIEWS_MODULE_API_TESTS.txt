@@ -1,0 +1,186 @@
+================================================================================
+                PROPERTY REVIEWS MODULE - API TESTS
+================================================================================
+Module: Property Reviews & Ratings
+Endpoints: 11 (Create, Update, Delete, Get Reviews, Stats, Verify)
+Base URL: http://localhost:8080/api/reviews
+Authentication: Required (Role-based)
+Status: ✅ Implemented & Compiled
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Backend server running on port 8080
+2. Database with property_reviews table
+3. Valid JWT tokens for different roles
+
+RATING SCALE:
+-------------
+1 star = Very Poor
+2 stars = Poor
+3 stars = Average
+4 stars = Good
+5 stars = Excellent
+
+================================================================================
+                    TEST 1: CREATE REVIEW (TENANT ONLY)
+================================================================================
+
+curl -X POST http://localhost:8080/api/reviews \
+  -H "Authorization: Bearer TENANT_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "propertyId": 5,
+    "leaseId": 10,
+    "rating": 5,
+    "comment": "Excellent property! Clean and well-maintained."
+  }'
+
+Expected: 200 OK with created review
+
+VALIDATION:
+- Only tenants can create reviews
+- Can't review same property twice
+- Rating must be 1-5
+
+================================================================================
+                    TEST 2: UPDATE REVIEW (TENANT ONLY)
+================================================================================
+
+curl -X PUT http://localhost:8080/api/reviews/1 \
+  -H "Authorization: Bearer TENANT_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 4,
+    "comment": "Updated review after maintenance issues."
+  }'
+
+Expected: 200 OK with updated review
+Error: "You don't have permission" if not owner
+
+================================================================================
+                    TEST 3: DELETE REVIEW (TENANT ONLY)
+================================================================================
+
+curl -X DELETE http://localhost:8080/api/reviews/1 \
+  -H "Authorization: Bearer TENANT_JWT_TOKEN"
+
+Expected: "Review deleted successfully"
+Error: "You don't have permission" if not owner
+
+================================================================================
+                    TEST 4: GET PROPERTY REVIEWS
+================================================================================
+
+curl -X GET http://localhost:8080/api/reviews/property/5 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: Array of all reviews for property 5
+
+================================================================================
+                    TEST 5: GET VERIFIED REVIEWS
+================================================================================
+
+curl -X GET http://localhost:8080/api/reviews/property/5/verified \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: Array of verified reviews only
+
+================================================================================
+                    TEST 6: GET PROPERTY RATING STATS
+================================================================================
+
+curl -X GET http://localhost:8080/api/reviews/property/5/stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected:
+{
+  "propertyId": 5,
+  "averageRating": 4.5,
+  "totalReviews": 10,
+  "verifiedReviews": 7,
+  "fiveStarCount": 6,
+  "fourStarCount": 3,
+  "threeStarCount": 1,
+  "twoStarCount": 0,
+  "oneStarCount": 0
+}
+
+================================================================================
+                    TEST 7: GET MY REVIEWS (TENANT)
+================================================================================
+
+curl -X GET http://localhost:8080/api/reviews/my-reviews \
+  -H "Authorization: Bearer TENANT_JWT_TOKEN"
+
+Expected: Array of reviews created by current tenant
+
+================================================================================
+                    TEST 8: GET LANDLORD'S PROPERTY REVIEWS
+================================================================================
+
+curl -X GET http://localhost:8080/api/reviews/landlord/my-properties \
+  -H "Authorization: Bearer LANDLORD_JWT_TOKEN"
+
+Expected: Array of all reviews for landlord's properties
+
+================================================================================
+                    TEST 9: VERIFY REVIEW (ADMIN ONLY)
+================================================================================
+
+curl -X PATCH http://localhost:8080/api/reviews/1/verify \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+Expected: 200 OK with review showing isVerified=true
+
+================================================================================
+                    TEST 10: UNVERIFY REVIEW (ADMIN ONLY)
+================================================================================
+
+curl -X PATCH http://localhost:8080/api/reviews/1/unverify \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+Expected: 200 OK with review showing isVerified=false
+
+================================================================================
+                    TEST 11: DELETE REVIEW (ADMIN)
+================================================================================
+
+curl -X DELETE http://localhost:8080/api/reviews/admin/1 \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+Expected: "Review deleted successfully"
+
+================================================================================
+                          INTEGRATION TESTS
+================================================================================
+
+TEST 12: Tenant Can't Review Without Lease
+-------------------------------------------
+- Tenant tries to review property they never leased
+- Expected: Success (no lease verification required)
+- Note: Lease ID is optional
+
+TEST 13: Duplicate Review Prevention
+-------------------------------------
+- Tenant reviews property (Success)
+- Same tenant tries to review again (Fail)
+- Expected: "You have already reviewed this property"
+
+TEST 14: Rating Statistics Accuracy
+------------------------------------
+- Add 5 reviews with different ratings
+- Check stats endpoint
+- Verify averageRating calculation
+- Verify star distribution counts
+
+TEST 15: Landlord Views All Reviews
+------------------------------------
+- Landlord with 3 properties
+- Each property has 2-3 reviews
+- GET /landlord/my-properties
+- Verify all reviews returned
+
+================================================================================
+                              END OF FILE
+================================================================================
