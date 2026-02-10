@@ -88,6 +88,11 @@ public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSp
     long countByStatus(PropertyStatus status);
     
     /**
+     * Count properties by landlord ID and status
+     */
+    long countByLandlordIdAndStatus(Long landlordId, PropertyStatus status);
+    
+    /**
      * Search properties by keyword in title or description
      */
     @Query("SELECT p FROM Property p WHERE " +

@@ -72,6 +72,11 @@ public interface LeaseRepository extends JpaRepository<Lease, Long> {
     List<Lease> findByStatusAndLeaseEndDateBefore(LeaseStatus status, LocalDate date);
     
     /**
+     * Find all leases by status
+     */
+    List<Lease> findByStatus(LeaseStatus status);
+    
+    /**
      * Find leases with specific status expiring between two dates
      * Useful for finding leases expiring soon
      */
@@ -111,4 +116,44 @@ public interface LeaseRepository extends JpaRepository<Lease, Long> {
            "WHERE l.tenant.id = :tenantId " +
            "ORDER BY l.createdAt DESC")
     List<Lease> findByTenantIdWithDetails(@Param("tenantId") Long tenantId);
+    
+    /**
+     * Count leases by tenant ID
+     */
+    long countByTenantId(Long tenantId);
+    
+    /**
+     * Count leases by tenant ID and status
+     */
+    long countByTenantIdAndStatus(Long tenantId, LeaseStatus status);
+    
+    /**
+     * Count leases by landlord ID
+     */
+    long countByLandlordId(Long landlordId);
+    
+    /**
+     * Count leases by landlord ID and status
+     */
+    long countByLandlordIdAndStatus(Long landlordId, LeaseStatus status);
+    
+    /**
+     * Count leases by status
+     */
+    long countByStatus(LeaseStatus status);
+    
+    /**
+     * Count leases by tenant ID, status and end date between dates
+     */
+    long countByTenantIdAndStatusAndLeaseEndDateBetween(Long tenantId, LeaseStatus status, LocalDate startDate, LocalDate endDate);
+    
+    /**
+     * Count leases by landlord ID, status and end date between dates
+     */
+    long countByLandlordIdAndStatusAndLeaseEndDateBetween(Long landlordId, LeaseStatus status, LocalDate startDate, LocalDate endDate);
+    
+    /**
+     * Count leases by status and end date between dates
+     */
+    long countByStatusAndLeaseEndDateBetween(LeaseStatus status, LocalDate startDate, LocalDate endDate);
 }

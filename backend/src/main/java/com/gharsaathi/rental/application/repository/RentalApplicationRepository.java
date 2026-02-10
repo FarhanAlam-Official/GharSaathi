@@ -89,4 +89,25 @@ public interface RentalApplicationRepository extends JpaRepository<RentalApplica
         @Param("landlordId") Long landlordId, 
         @Param("status") ApplicationStatus status
     );
+    
+    /**
+     * Count total applications by tenant ID
+     */
+    long countByTenantId(Long tenantId);
+    
+    /**
+     * Count total applications by landlord ID
+     */
+    @Query("SELECT COUNT(ra) FROM RentalApplication ra WHERE ra.property.landlord.id = :landlordId")
+    long countByLandlordId(@Param("landlordId") Long landlordId);
+    
+    /**
+     * Count applications by status
+     */
+    long countByStatus(ApplicationStatus status);
+    
+    /**
+     * Count total applications by property ID
+     */
+    long countByPropertyId(Long propertyId);
 }
