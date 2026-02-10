@@ -1,0 +1,99 @@
+================================================================================
+                NOTIFICATIONS MODULE - API TESTS
+================================================================================
+Module: Notifications System
+Endpoints: 11 (Get, Unread, Read, Filter, Mark Read, Delete)
+Base URL: http://localhost:8080/api/notifications
+Authentication: Required (All authenticated users)
+Status: ✅ Implemented & Compiled
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Backend server running on port 8080
+2. Database with notifications table
+3. Valid JWT token (any role)
+
+NOTIFICATION TYPES:
+-------------------
+Application: APPLICATION_SUBMITTED, APPLICATION_APPROVED, APPLICATION_REJECTED
+Lease: LEASE_CREATED, LEASE_SIGNED, LEASE_EXPIRING, LEASE_EXPIRED, LEASE_TERMINATED
+Payment: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_DUE, PAYMENT_OVERDUE
+Property: PROPERTY_APPROVED, PROPERTY_REJECTED
+User: PROFILE_UPDATED, ACCOUNT_SUSPENDED, ACCOUNT_REACTIVATED, ROLE_CHANGED
+General: SYSTEM_ANNOUNCEMENT, GENERAL_MESSAGE
+
+================================================================================
+                    TEST 1: GET ALL NOTIFICATIONS
+================================================================================
+
+curl -X GET http://localhost:8080/api/notifications \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: 200 OK with array of all user's notifications
+
+================================================================================
+                    TEST 2: GET UNREAD NOTIFICATIONS
+================================================================================
+
+curl -X GET http://localhost:8080/api/notifications/unread \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: 200 OK with array of unread notifications only
+
+================================================================================
+                    TEST 3: GET UNREAD COUNT
+================================================================================
+
+curl -X GET http://localhost:8080/api/notifications/unread/count \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: {"unreadCount": 5}
+
+================================================================================
+                    TEST 4: MARK NOTIFICATION AS READ
+================================================================================
+
+curl -X PATCH http://localhost:8080/api/notifications/1/read \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: 200 OK with notification showing isRead=true
+
+================================================================================
+                    TEST 5: MARK ALL AS READ
+================================================================================
+
+curl -X PATCH http://localhost:8080/api/notifications/read-all \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: "All notifications marked as read"
+
+================================================================================
+                    TEST 6: DELETE NOTIFICATION
+================================================================================
+
+curl -X DELETE http://localhost:8080/api/notifications/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+Expected: "Notification deleted successfully"
+
+================================================================================
+                    TEST 7: CREATE NOTIFICATION (ADMIN ONLY)
+================================================================================
+
+curl -X POST http://localhost:8080/api/notifications \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 5,
+    "title": "System Maintenance",
+    "message": "System will be under maintenance tonight",
+    "type": "SYSTEM_ANNOUNCEMENT",
+    "referenceUrl": "/announcements/1"
+  }'
+
+Expected: 200 OK with created notification
+
+================================================================================
+                              END OF FILE
+================================================================================
