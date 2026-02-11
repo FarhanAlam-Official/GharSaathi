@@ -87,6 +87,9 @@ public class Property {
     @Column
     private Double longitude;
     
+    @Column(name = "google_maps_url", length = 1000)
+    private String googleMapsUrl;
+    
     // Pricing
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
