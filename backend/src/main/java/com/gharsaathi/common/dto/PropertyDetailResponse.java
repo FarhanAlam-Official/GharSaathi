@@ -1,17 +1,18 @@
 package com.gharsaathi.common.dto;
 
-import com.gharsaathi.property.model.PropertyStatus;
-import com.gharsaathi.property.model.PropertyType;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+
+import com.gharsaathi.property.model.PropertyStatus;
+import com.gharsaathi.property.model.PropertyType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * DTO for detailed property information
@@ -36,6 +37,7 @@ public class PropertyDetailResponse {
     private String area;
     private Double latitude;
     private Double longitude;
+    private String googleMapsUrl;
     
     // Pricing
     private BigDecimal price;
@@ -75,6 +77,7 @@ public class PropertyDetailResponse {
     public static class PropertyImageResponse {
         private Long id;
         private String imageUrl;
+        private String mediaType;
         private Boolean isPrimary;
         private Integer displayOrder;
     }
