@@ -36,11 +36,13 @@ public class PropertySearchCriteria {
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     
-    // Bedroom range
+    // Bedroom filters - supports both single value and range
+    private Integer bedrooms; // Exact or minimum number of bedrooms
     private Integer minBedrooms;
     private Integer maxBedrooms;
     
-    // Bathroom range
+    // Bathroom filters - supports both single value and range
+    private Integer bathrooms; // Exact or minimum number of bathrooms
     private Integer minBathrooms;
     private Integer maxBathrooms;
     
