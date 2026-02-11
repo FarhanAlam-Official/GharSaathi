@@ -59,6 +59,9 @@ public class CreatePropertyRequest {
     @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
     private Double longitude;
     
+    @Size(max = 1000, message = "Google Maps URL must not exceed 1000 characters")
+    private String googleMapsUrl;
+    
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
     @Digits(integer = 8, fraction = 2, message = "Price must be a valid amount")
