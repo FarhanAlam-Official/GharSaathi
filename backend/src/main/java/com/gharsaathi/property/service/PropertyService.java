@@ -69,6 +69,7 @@ public class PropertyService {
             .area(request.getArea())
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
+            .googleMapsUrl(request.getGoogleMapsUrl())
             .price(request.getPrice())
             .securityDeposit(request.getSecurityDeposit())
             .bedrooms(request.getBedrooms())
@@ -328,20 +329,32 @@ public class PropertyService {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), criteria.getMaxPrice()));
             }
             
-            // Bedroom range
-            if (criteria.getMinBedrooms() != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bedrooms"), criteria.getMinBedrooms()));
-            }
-            if (criteria.getMaxBedrooms() != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bedrooms"), criteria.getMaxBedrooms()));
+            // Bedroom filters - supports both single value and range
+            // If 'bedrooms' is specified, filter for exact match
+            // If minBedrooms/maxBedrooms are specified, use range filtering
+            if (criteria.getBedrooms() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("bedrooms"), criteria.getBedrooms()));
+            } else {
+                if (criteria.getMinBedrooms() != null) {
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bedrooms"), criteria.getMinBedrooms()));
+                }
+                if (criteria.getMaxBedrooms() != null) {
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bedrooms"), criteria.getMaxBedrooms()));
+                }
             }
             
-            // Bathroom range
-            if (criteria.getMinBathrooms() != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bathrooms"), criteria.getMinBathrooms()));
-            }
-            if (criteria.getMaxBathrooms() != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bathrooms"), criteria.getMaxBathrooms()));
+            // Bathroom filters - supports both single value and range
+            // If 'bathrooms' is specified, filter for exact match
+            // If minBathrooms/maxBathrooms are specified, use range filtering
+            if (criteria.getBathrooms() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("bathrooms"), criteria.getBathrooms()));
+            } else {
+                if (criteria.getMinBathrooms() != null) {
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bathrooms"), criteria.getMinBathrooms()));
+                }
+                if (criteria.getMaxBathrooms() != null) {
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("bathrooms"), criteria.getMaxBathrooms()));
+                }
             }
             
             // Property area range
@@ -361,6 +374,13 @@ public class PropertyService {
             }
             if (criteria.getPetsAllowed() != null) {
                 predicates.add(criteriaBuilder.equal(root.get("petsAllowed"), criteria.getPetsAllowed()));
+            }
+            
+            // Amenities filter (property must have ALL specified amenities)
+            if (criteria.getAmenities() != null && !criteria.getAmenities().isEmpty()) {
+                for (String amenity : criteria.getAmenities()) {
+                    predicates.add(criteriaBuilder.isMember(amenity, root.get("amenities")));
+                }
             }
             
             // Keyword search (in title and description)
@@ -388,6 +408,7 @@ public class PropertyService {
             .map(img -> PropertyDetailResponse.PropertyImageResponse.builder()
                 .id(img.getId())
                 .imageUrl(img.getImageUrl())
+                .mediaType(img.getMediaType())
                 .isPrimary(img.getIsPrimary())
                 .displayOrder(img.getDisplayOrder())
                 .build())
@@ -411,6 +432,7 @@ public class PropertyService {
             .area(property.getArea())
             .latitude(property.getLatitude())
             .longitude(property.getLongitude())
+            .googleMapsUrl(property.getGoogleMapsUrl())
             .price(property.getPrice())
             .securityDeposit(property.getSecurityDeposit())
             .bedrooms(property.getBedrooms())
