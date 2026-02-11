@@ -43,6 +43,10 @@ public class PropertyImage {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
     
+    @Column(name = "media_type", length = 20)
+    @Builder.Default
+    private String mediaType = "IMAGE"; // IMAGE or VIDEO
+    
     @Column(name = "is_primary")
     @Builder.Default
     private Boolean isPrimary = false;
