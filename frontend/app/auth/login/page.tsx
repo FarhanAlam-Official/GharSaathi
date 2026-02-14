@@ -1,15 +1,48 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Home, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Home, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+
+// Validation schema
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string>('')
+  const { login, isLoading } = useAuth()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  })
+
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      setError('')
+      await login(data)
+      // Redirect is handled by AuthContext
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.')
+    }
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4">
@@ -36,15 +69,31 @@ export default function LoginPage() {
           </div>
 
           {/* Form */}
-          <form className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <div>
               <Label htmlFor="email" className="text-foreground">
-                Email or Phone
+                Email
               </Label>
               <div className="relative mt-2">
                 <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input id="email" type="email" placeholder="Enter your email" className="pl-10 h-12 bg-background" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  className="pl-10 h-12 bg-background"
+                  {...register('email')}
+                />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
+              )}
             </div>
 
             <div>
@@ -63,6 +112,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   className="pl-10 pr-10 h-12 bg-background"
+                  {...register('password')}
                 />
                 <button
                   type="button"
@@ -72,10 +122,13 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full h-12 text-base gap-2">
-              Log In
+            <Button type="submit" className="w-full h-12 text-base gap-2" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Log In'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
