@@ -1,16 +1,65 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Home, User, Mail, Lock, Eye, EyeOff, ArrowRight, Users, Building2, CheckCircle2 } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Home, User, Mail, Lock, Eye, EyeOff, ArrowRight, Users, Building2, AlertCircle, Phone, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/AuthContext"
+import type { Role } from "@/types/auth.types"
+
+// Validation schema
+const registerSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
+  role: z.enum(['TENANT', 'LANDLORD']),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+})
+
+type RegisterFormData = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [userType, setUserType] = useState<"tenant" | "landlord">("tenant")
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState<string>('')
+  const { register: registerUser, isLoading } = useAuth()
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: 'TENANT',
+    },
+  })
+
+  const userType = watch('role')
+
+  const onSubmit = async (data: RegisterFormData) => {
+    try {
+      setError('')
+      await registerUser(data)
+      // Redirect is handled by AuthContext
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0f172a]">
@@ -55,10 +104,10 @@ export default function RegisterPage() {
             <div className="mt-8 flex rounded-xl bg-slate-700/50 p-1">
               <button
                 type="button"
-                onClick={() => setUserType("tenant")}
+                onClick={() => setValue('role', 'TENANT')}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-colors",
-                  userType === "tenant" ? "bg-slate-600 text-slate-100" : "text-slate-400 hover:text-slate-300",
+                  userType === "TENANT" ? "bg-slate-600 text-slate-100" : "text-slate-400 hover:text-slate-300",
                 )}
               >
                 <Users className="h-4 w-4" />
@@ -66,10 +115,10 @@ export default function RegisterPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setUserType("landlord")}
+                onClick={() => setValue('role', 'LANDLORD')}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium transition-colors",
-                  userType === "landlord" ? "bg-slate-600 text-slate-100" : "text-slate-400 hover:text-slate-300",
+                  userType === "LANDLORD" ? "bg-slate-600 text-slate-100" : "text-slate-400 hover:text-slate-300",
                 )}
               >
                 <Building2 className="h-4 w-4" />
@@ -80,26 +129,57 @@ export default function RegisterPage() {
             {/* Progress */}
             <div className="mt-6 flex items-center justify-between text-sm">
               <span className="text-slate-400">ACCOUNT DETAILS</span>
-              <span className="text-slate-400">STEP 1 OF 3</span>
+              <span className="text-slate-400">Registration</span>
             </div>
             <div className="mt-2 h-1 rounded-full bg-slate-700">
-              <div className="h-1 w-1/3 rounded-full bg-primary" />
+              <div className="h-1 w-full rounded-full bg-primary" />
             </div>
 
             {/* Form */}
-            <form className="mt-6 space-y-4">
-              <div>
-                <Label htmlFor="name" className="text-slate-300">
-                  Full Name
-                </Label>
-                <div className="relative mt-2">
-                  <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="e.g. Aarav Sharma"
-                    className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
-                  />
+            <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName" className="text-slate-300">
+                    First Name
+                  </Label>
+                  <div className="relative mt-2">
+                    <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="First name"
+                      className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      {...register('firstName')}
+                    />
+                  </div>
+                  {errors.firstName && (
+                    <p className="mt-1 text-sm text-destructive">{errors.firstName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="lastName" className="text-slate-300">
+                    Last Name
+                  </Label>
+                  <div className="relative mt-2">
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Last name"
+                      className="h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                      {...register('lastName')}
+                    />
+                  </div>
+                  {errors.lastName && (
+                    <p className="mt-1 text-sm text-destructive">{errors.lastName.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -114,26 +194,31 @@ export default function RegisterPage() {
                     type="email"
                     placeholder="name@example.com"
                     className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                    {...register('email')}
                   />
                 </div>
+                {errors.email && (
+                  <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="phone" className="text-slate-300">
-                  Mobile Number
+                <Label htmlFor="phoneNumber" className="text-slate-300">
+                  Mobile Number (Optional)
                 </Label>
-                <div className="relative mt-2 flex">
-                  <div className="flex items-center gap-2 rounded-l-md border border-r-0 border-slate-600 bg-slate-700/50 px-3">
-                    <span className="text-lg">🇳🇵</span>
-                    <span className="text-slate-400">+977</span>
-                  </div>
+                <div className="relative mt-2">
+                  <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <Input
-                    id="phone"
+                    id="phoneNumber"
                     type="tel"
                     placeholder="98XXXXXXXX"
-                    className="rounded-l-none h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                    className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                    {...register('phoneNumber')}
                   />
                 </div>
+                {errors.phoneNumber && (
+                  <p className="mt-1 text-sm text-destructive">{errors.phoneNumber.message}</p>
+                )}
               </div>
 
               <div>
@@ -147,6 +232,7 @@ export default function RegisterPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a strong password"
                     className="pl-10 pr-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                    {...register('password')}
                   />
                   <button
                     type="button"
@@ -156,11 +242,44 @@ export default function RegisterPage() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
+                )}
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base gap-2 bg-primary hover:bg-primary/90">
-                Continue
-                <ArrowRight className="h-4 w-4" />
+              <div>
+                <Label htmlFor="confirmPassword" className="text-slate-300">
+                  Confirm Password
+                </Label>
+                <div className="relative mt-2">
+                  <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    className="pl-10 pr-10 h-12 bg-slate-700/50 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                    {...register('confirmPassword')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-destructive">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base gap-2 bg-primary hover:bg-primary/90"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creating Account...' : 'Create Account'}
+                {!isLoading && <ArrowRight className="h-4 w-4" />}
               </Button>
             </form>
 
