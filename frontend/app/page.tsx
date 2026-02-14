@@ -151,7 +151,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
         {/* Featured Categories */}
         <section className="py-16 lg:py-24">
           <div className="container mx-auto px-4">
