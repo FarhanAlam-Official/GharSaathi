@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Home, Search, Menu, X, User, Bell, LogOut, Settings, Heart, FileText } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface NavbarProps {
   variant?: "public" | "tenant" | "landlord" | "admin"
@@ -21,7 +22,23 @@ interface NavbarProps {
 
 export function Navbar({ variant = "public", showSearch = false }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isLoggedIn = variant !== "public"
+  const { user, isAuthenticated, logout } = useAuth()
+  const isLoggedIn = isAuthenticated && variant !== "public"
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
+
+  const getUserInitials = () => {
+    if (!user) return 'U'
+    const firstName = user.firstName?.[0] || ''
+    const lastName = user.lastName?.[0] || ''
+    return (firstName + lastName).toUpperCase() || 'U'
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -114,20 +131,22 @@ export function Navbar({ variant = "public", showSearch = false }: NavbarProps) 
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="/placeholder.svg?height=36&width=36" alt="User" />
-                      <AvatarFallback>AS</AvatarFallback>
+                      <AvatarImage src={user?.profilePictureUrl || ""} alt={user?.firstName || "User"} />
+                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                      <AvatarFallback>AS</AvatarFallback>
+                      <AvatarImage src={user?.profilePictureUrl || ""} />
+                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Aarav Sharma</p>
-                      <p className="text-xs text-muted-foreground">aarav@example.com</p>
+                      <p className="text-sm font-medium">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -160,7 +179,10 @@ export function Navbar({ variant = "public", showSearch = false }: NavbarProps) 
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem 
+                    className="text-destructive cursor-pointer"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
